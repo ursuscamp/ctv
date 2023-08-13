@@ -78,27 +78,39 @@ fn sha256(data: Vec<u8>) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+
     use super::*;
 
     #[test]
     fn test_ctv() {
-        let tx = include_str!("../tests/tx.txt");
-        let inputs = [0i64, 1, 3116999548, 4294967295]
-            .into_iter()
-            .map(|s| s as u32)
-            .collect::<Vec<_>>();
-        let results = [
-            "2d28d0672f1d46cb3e86abd7e682d2d3e9961e6c9237157f47d39f0a694bb694",
-            "12f7ab0a282fb9e29c9fd2ada21f950f492bfd5778a94202398c13ae6e97f0b4",
-            "0ee9cc212182845d4c32ba6b3ba8859800d5cf423c58fb1444feaf21aa9cf81c",
-            "da78ece7c0888725532355018961f58ad471f242e29a60adf84c55007fad608f",
-        ];
+        let test_data = include_str!("../tests/ctvhash.json");
+        let test_data: Vec<Value> = serde_json::from_str(test_data).unwrap();
+        for td in test_data {
+            if td.is_string() {
+                continue;
+            }
+            let td = td.as_object().unwrap();
+            let hex_tx = td["hex_tx"].as_str().unwrap();
+            let tx: Transaction =
+                bitcoin::consensus::deserialize(&hex::decode(&hex_tx).unwrap()).unwrap();
+            let spend_index = td["spend_index"]
+                .as_array()
+                .unwrap()
+                .into_iter()
+                .map(|i| i.as_i64().unwrap())
+                .collect::<Vec<i64>>();
+            let result: Vec<String> = td["result"]
+                .as_array()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.as_str().unwrap().to_owned())
+                .collect();
 
-        let tx = hex::decode(&tx).unwrap();
-        let tx: Transaction = bitcoin::consensus::deserialize(&tx).unwrap();
-        for (idx, input) in inputs.iter().enumerate() {
-            let calculated = hex::encode(ctv(&tx, *input));
-            assert_eq!(calculated, results[idx]);
+            for (idx, si) in spend_index.into_iter().enumerate() {
+                let hash = hex::encode(ctv(&tx, si as u32));
+                assert_eq!(hash, result[idx]);
+            }
         }
     }
 }
