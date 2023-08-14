@@ -94,6 +94,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin",
  "hex",
+ "miniscript",
  "serde",
  "serde_json",
  "sha2",
@@ -142,6 +143,17 @@ name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
+
+[[package]]
+name = "miniscript"
+version = "10.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1eb102b66b2127a872dbcc73095b7b47aeb9d92f7b03c2b2298253ffc82c7594"
+dependencies = [
+ "bitcoin",
+ "bitcoin-private",
+ "serde",
+]
 
 [[package]]
 name = "proc-macro2"

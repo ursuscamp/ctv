@@ -64,7 +64,7 @@ fn outputs(tx: &Transaction) -> Vec<u8> {
     sha256(outputs)
 }
 
-fn sha256(data: Vec<u8>) -> Vec<u8> {
+pub fn sha256(data: Vec<u8>) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().to_vec()
