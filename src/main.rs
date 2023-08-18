@@ -2,8 +2,9 @@
 
 mod ctv; // 1
 mod p2wsh; // 2
-mod p2wsh_ctv; // 3
+mod segwit_ctv; // 3
+mod taproot_ctv; //4
 
 fn main() {
-    p2wsh_ctv::run();
+    taproot_ctv::run();
 }
