@@ -1,8 +1,9 @@
 #![allow(unused)]
 
-mod ctv;
-mod p2wsh;
+mod ctv; // 1
+mod p2wsh; // 2
+mod p2wsh_ctv; // 3
 
 fn main() {
-    println!("hello world")
+    p2wsh_ctv::run();
 }
