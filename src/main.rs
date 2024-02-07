@@ -1,10 +1,10 @@
 #![allow(unused)]
 
-mod ctv; // 1
-mod p2wsh; // 2
-mod segwit_ctv; // 3
-mod taproot_ctv; //4
+mod ctv;
+mod server;
 
-fn main() {
-    taproot_ctv::run();
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    server::server().await?;
+    Ok(())
 }
