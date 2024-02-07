@@ -1,14 +1,13 @@
-<html>
-  <body>
-    <h1>CTV Playground</h1>
-    <form action="/ctv" method="post">
-      <label for="txhash">TX Hash</label>
-      <input type="text" id="txhash" name="txhash" />
+{% extends "base.html" %} {% block content %}
+<h1>CTV Playground</h1>
 
-      <label for="input">Input Index</label>
-      <input type="text" id="input" name="input" />
+<form action="/ctv" method="post">
+  <label for="txhash">TX Hash</label>
+  <input type="text" id="txhash" name="txhash" />
 
-      <input type="submit" />
-    </form>
-  </body>
-</html>
+  <label for="input">Input Index</label>
+  <input type="text" id="input" name="input" />
+
+  <input type="submit" />
+</form>
+{% endblock %}
