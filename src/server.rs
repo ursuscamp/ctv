@@ -27,8 +27,8 @@ async fn index() -> IndexTemplate {
 struct CtvRequest {
     #[serde(with = "bitcoin::consensus::serde::With::<bitcoin::consensus::serde::Hex>")]
     txhash: Transaction,
-
     input: u32,
+    network: Network,
 }
 
 #[derive(Template)]
@@ -43,7 +43,7 @@ struct CtvTemplate {
 async fn ctv(Form(request): Form<CtvRequest>) -> CtvTemplate {
     let tmplhash = ctv::ctv(&request.txhash, request.input);
     let locking_script = ctv::segwit::locking_script(&tmplhash);
-    let address = ctv::segwit::locking_address(&locking_script, Network::Regtest).to_string();
+    let address = ctv::segwit::locking_address(&locking_script, request.network).to_string();
     CtvTemplate {
         ctv: hex::encode(tmplhash),
         locking_script: locking_script.to_string(),
