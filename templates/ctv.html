@@ -1,5 +1,28 @@
 {% extends "base.html" %} {% block content %}
 <h1>CTV Playground</h1>
-<strong>Template Hash</strong>
-<code>{{ ctv }}</code>
+<div class="grid">
+  <strong>Template Hash</strong>
+  <code style="grid-column-end: span 4">{{ ctv }}</code>
+</div>
+
+<hr />
+
+<div class="grid">
+  <strong>Locking Script</strong>
+  <code style="grid-column-end: span 4">{{ locking_script }}</code>
+</div>
+
+<hr />
+
+<div class="grid">
+  <strong>Locking Script (Hex)</strong>
+  <code style="grid-column-end: span 4">{{ locking_hex}}</code>
+</div>
+
+<hr />
+
+<div class="grid">
+  <strong>Address</strong>
+  <code style="grid-column-end: span 4">{{ address }}</code>
+</div>
 {% endblock %}

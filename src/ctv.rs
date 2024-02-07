@@ -70,6 +70,21 @@ pub fn sha256(data: Vec<u8>) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
+pub mod segwit {
+    use bitcoin::{opcodes::all::OP_NOP4, Address, Network, Script, ScriptBuf};
+
+    pub fn locking_address(script: &Script, network: Network) -> Address {
+        Address::p2wsh(script, network)
+    }
+
+    pub fn locking_script(tmplhash: &[u8]) -> ScriptBuf {
+        let bytes = <&[u8; 32]>::try_from(tmplhash).unwrap();
+        bitcoin::script::Builder::new()
+            .push_slice(bytes)
+            .push_opcode(OP_NOP4)
+            .into_script()
+    }
+}
 #[cfg(test)]
 mod tests {
     use serde_json::Value;

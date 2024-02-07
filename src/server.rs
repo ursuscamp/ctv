@@ -1,6 +1,6 @@
 use askama::Template;
 use axum::{Form, Router};
-use bitcoin::Transaction;
+use bitcoin::{Network, Transaction};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
@@ -35,10 +35,19 @@ struct CtvRequest {
 #[template(path = "ctv.html")]
 struct CtvTemplate {
     ctv: String,
+    locking_script: String,
+    locking_hex: String,
+    address: String,
 }
 
 async fn ctv(Form(request): Form<CtvRequest>) -> CtvTemplate {
     let tmplhash = ctv::ctv(&request.txhash, request.input);
-    let tmplhash = hex::encode(tmplhash);
-    CtvTemplate { ctv: tmplhash }
+    let locking_script = ctv::segwit::locking_script(&tmplhash);
+    let address = ctv::segwit::locking_address(&locking_script, Network::Regtest).to_string();
+    CtvTemplate {
+        ctv: hex::encode(tmplhash),
+        locking_script: locking_script.to_string(),
+        locking_hex: hex::encode(locking_script.into_bytes()),
+        address: address.to_string(),
+    }
 }
