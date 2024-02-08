@@ -1,15 +1,22 @@
 {% extends "base.html" %} {% block content %}
 <h1>CTV Playground</h1>
 
-<form action="/ctv" method="post">
-  <label for="txhash">TX Hash</label>
-  <input type="text" id="txhash" name="txhash" />
+<h2>From Outputs</h2>
+<p>List outputs below in the following format:</p>
+<code>
+  address1:1btc
+  <br />
+  address2:1.3btc
+</code>
+<br />
+<form action="/outputs" method="post">
+  <label for="outputs">Outputs</label>
+  <textarea name="outputs" id="outputs"></textarea>
+  <label for="input1">Input Index</label>
+  <input type="text" id="input1" name="input" />
 
-  <label for="input">Input Index</label>
-  <input type="text" id="input" name="input" />
-
-  <label for="network">Network</label>
-  <select id="network" name="network">
+  <label for="network1">Network</label>
+  <select id="network1" name="network">
     <option value="bitcoin">Bitcoin</option>
     <option value="regtest">Regest</option>
     <option value="signet">Signet</option>
