@@ -7,14 +7,14 @@
   <code>OP_CTV</code> (as described in
   <a href="https://github.com/bitcoin/bips/blob/master/bip-0119.mediawiki"
     >BIP-119</a
-  >) locks a Bitcoin transaction to only a certainly enumerated set of outputs.
-  Using the tools on this page, you can play with that on Signet or Regtest
-  using
+  >) locks a Bitcoin UTXO to only be spent by a certain enumerated set of
+  outputs. Using the tools on this page, you can play with that on Signet or
+  Regtest using
   <a href="https://github.com/bitcoin-inquisition/bitcoin"
     >Bitcoin Inquisition</a
-  >. Using these tools, you will create a CTV address and lock Bitcoin into,
-  then create a spending transactions which will spend to <em>only</em> those
-  outputs committed below.
+  >. Using this tool, you will create a CTV address and lock Bitcoin into it,
+  then you will create a spending transactions which will spend to
+  <em>only</em> those committed outputs.
 </p>
 
 <p>
@@ -36,13 +36,13 @@
 <p>
   Then, enter the <em>Input Index</em> of the CTV transaction. This is the
   <code>vout</code> of the CTV locking transaction. Usually it will be
-  <code>0</code>, but it will depend on which output your wallet software puts
-  the CTV output.
+  <code>0</code>, but it will depend on which output your wallet uses for the
+  CTV output.
 </p>
 
 <p>
-  Lastly, enter the network you wish send to. At this point, you should only use
-  Signet or Regtest.
+  Lastly, enter the network you wish send to. Currently the CTV soft fork is
+  only active on signet and regtest.
 </p>
 
 <form action="/locking" method="post">

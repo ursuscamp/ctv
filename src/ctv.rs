@@ -95,6 +95,7 @@ pub mod segwit {
             .into_script()
     }
 }
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
