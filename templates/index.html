@@ -47,13 +47,13 @@
 
 <form action="/locking" method="post">
   <label for="outputs">Outputs</label>
-  <textarea name="outputs" id="outputs"></textarea>
+  <textarea name="outputs" id="outputs" required></textarea>
 
   <label for="input1">Input Index</label>
-  <input type="text" id="input1" name="input" />
+  <input type="text" id="input1" name="input" required />
 
   <label for="network1">Network</label>
-  <select id="network1" name="network">
+  <select id="network1" name="network" required>
     <option value="regtest">Regest</option>
     <option value="signet">Signet</option>
   </select>
