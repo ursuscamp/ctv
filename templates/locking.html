@@ -25,4 +25,22 @@
   <strong>Address</strong>
   <code style="grid-column-end: span 4">{{ address }}</code>
 </div>
+
+<div>
+  <form action="/spending" method="post">
+    <input type="hidden" name="ctv" value="{{ctv}}" />
+    <input type="hidden" name="input" value="{{input}}" />
+
+    {% for address in addresses %}
+    <input type="hidden" name="addresses" value="{{address}}" />
+    {% endfor %} {% for amount in amounts %}
+    <input type="hidden" name="amounts" value="{{amount}}" />
+    {% endfor %}
+
+    <label for="txid">Txid</label>
+    <input type="text" name="txid" />
+
+    <input type="submit" />
+  </form>
+</div>
 {% endblock %}

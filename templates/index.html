@@ -1,17 +1,54 @@
 {% extends "base.html" %} {% block content %}
 <h1>CTV Playground</h1>
 
-<h2>From Outputs</h2>
-<p>List outputs below in the following format:</p>
-<code>
-  address1:1btc
+<h2>Locking Transaction</h2>
+
+<p>
+  <code>OP_CTV</code> (as described in
+  <a href="https://github.com/bitcoin/bips/blob/master/bip-0119.mediawiki"
+    >BIP-119</a
+  >) locks a Bitcoin transaction to only a certainly enumerated set of outputs.
+  Using the tools on this page, you can play with that on Signet or Regtest
+  using
+  <a href="https://github.com/bitcoin-inquisition/bitcoin"
+    >Bitcoin Inquisition</a
+  >. Using these tools, you will create a CTV address and lock Bitcoin into,
+  then create a spending transactions which will spend to <em>only</em> those
+  outputs committed below.
+</p>
+
+<p>
+  First, describe the future outputs you wish your transaction to commit to.
+  They should take the form:
+
   <br />
-  address2:1.3btc
-</code>
-<br />
-<form action="/outputs" method="post">
+  <code>
+    address1:1.2btc <br />
+    address2:4323sats
+  </code>
+  <br />
+
+  You can use any combination of addresses and amounts (in sats or BTC) that you
+  like. After you lock the Bitcoin into these outputs, you will NOT be able to
+  send your Bitcoin anywhere else.
+</p>
+
+<p>
+  Then, enter the <em>Input Index</em> of the CTV transaction. This is the
+  <code>vout</code> of the CTV locking transaction. Usually it will be
+  <code>0</code>, but it will depend on which output your wallet software puts
+  the CTV output.
+</p>
+
+<p>
+  Lastly, enter the network you wish send to. At this point, you should only use
+  Signet or Regtest.
+</p>
+
+<form action="/locking" method="post">
   <label for="outputs">Outputs</label>
   <textarea name="outputs" id="outputs"></textarea>
+
   <label for="input1">Input Index</label>
   <input type="text" id="input1" name="input" />
 
