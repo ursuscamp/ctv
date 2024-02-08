@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use anyhow::anyhow;
 use askama::Template;
 use axum::Router;
 use axum_extra::extract::Form;
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use tokio::net::TcpListener;
 
-use crate::ctv;
+use crate::{ctv, error::AppError};
 
 pub async fn server() -> anyhow::Result<()> {
     let app = Router::new()
@@ -50,16 +51,15 @@ struct OutputsRequest {
     network: Network,
 }
 
-async fn locking(Form(request): Form<OutputsRequest>) -> CtvTemplate {
+async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, AppError> {
     let mut addresses = Vec::new();
     let mut amounts = Vec::new();
     for line in request.outputs.lines() {
-        let (address, amount) = line.split_once(':').unwrap();
-        let address = Address::from_str(address)
-            .unwrap()
-            .require_network(request.network)
-            .unwrap();
-        let amount = Amount::from_str(amount).unwrap();
+        let (address, amount) = line
+            .split_once(':')
+            .ok_or_else(|| anyhow!("Incorrectly formatted output"))?;
+        let address = Address::from_str(address)?.require_network(request.network)?;
+        let amount = Amount::from_str(amount)?;
         addresses.push(address);
         amounts.push(amount);
     }
@@ -83,15 +83,15 @@ async fn locking(Form(request): Form<OutputsRequest>) -> CtvTemplate {
     let tmplhash = ctv::ctv(&tx, request.input);
     let locking_script = ctv::segwit::locking_script(&tmplhash);
     let address = ctv::segwit::locking_address(&locking_script, request.network).to_string();
-    CtvTemplate {
+    Ok(CtvTemplate {
         ctv: hex::encode(tmplhash),
-        locking_script: locking_script.to_string(),
+        locking_script: ctv::colorize(&locking_script.to_string()),
         locking_hex: hex::encode(locking_script.into_bytes()),
         address: address.to_string(),
         input: request.input,
         addresses,
         amounts,
-    }
+    })
 }
 
 #[serde_as]
@@ -111,10 +111,9 @@ struct SpendingTemplate {
     tx: String,
 }
 
-async fn spending(Form(request): Form<SpendingRequest>) -> SpendingTemplate {
-    println!("{request:#?}");
-    let ctv = hex::decode(&request.ctv).unwrap();
-    let ctvpb = PushBytesBuf::try_from(ctv.clone()).unwrap();
+async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTemplate, AppError> {
+    let ctv = hex::decode(&request.ctv)?;
+    let ctvpb = PushBytesBuf::try_from(ctv.clone())?;
     let script_sig = bitcoin::script::Builder::new()
         .push_slice(ctvpb)
         .into_script();
@@ -143,7 +142,8 @@ async fn spending(Form(request): Form<SpendingRequest>) -> SpendingTemplate {
         }],
         output,
     };
-    SpendingTemplate {
+
+    Ok(SpendingTemplate {
         tx: hex::encode(bitcoin::consensus::serialize(&tx)),
-    }
+    })
 }
