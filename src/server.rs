@@ -12,15 +12,22 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use tokio::net::TcpListener;
+use tracing_subscriber::EnvFilter;
 
 use crate::{ctv, error::AppError};
 
 pub async fn server() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     let app = Router::new()
         .route("/", axum::routing::get(index))
         .route("/locking", axum::routing::post(locking))
         .route("/spending", axum::routing::post(spending));
-    let listener = TcpListener::bind("0.0.0.0:5555").await?;
+    let listener = TcpListener::bind("localhost:5555").await?;
+
+    tracing::info!("Starting server on localhost:5555");
     axum::serve(listener, app).await?;
     Ok(())
 }
@@ -43,13 +50,15 @@ struct CtvTemplate {
     amounts: Vec<Amount>,
 }
 
-#[derive(Deserialize)]
-struct OutputsRequest {
+#[derive(Debug, Deserialize)]
+struct LockingRequest {
     outputs: String,
     network: Network,
 }
 
-async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, AppError> {
+async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, AppError> {
+    tracing::info!("Locking started.");
+    tracing::debug!("{request:?}");
     let mut addresses = Vec::new();
     let mut amounts = Vec::new();
     for line in request.outputs.lines() {
@@ -81,6 +90,7 @@ async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, App
     let tmplhash = ctv::ctv(&tx, 0);
     let locking_script = ctv::segwit::locking_script(&tmplhash);
     let address = ctv::segwit::locking_address(&locking_script, request.network).to_string();
+    tracing::info!("Locking finished.");
     Ok(CtvTemplate {
         ctv: hex::encode(tmplhash),
         locking_script: ctv::colorize(&locking_script.to_string()),
@@ -109,6 +119,8 @@ struct SpendingTemplate {
 }
 
 async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTemplate, AppError> {
+    tracing::info!("Spending started.");
+    tracing::debug!("{request:?}");
     let ctv = hex::decode(&request.ctv)?;
     let ctvpb = PushBytesBuf::try_from(ctv.clone())?;
     let script_sig = bitcoin::script::Builder::new()
@@ -140,6 +152,7 @@ async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTempla
         output,
     };
 
+    tracing::info!("Spending finished.");
     Ok(SpendingTemplate {
         tx: hex::encode(bitcoin::consensus::serialize(&tx)),
     })
