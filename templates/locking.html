@@ -45,7 +45,6 @@
 <div>
   <form action="/spending" method="post">
     <input type="hidden" name="ctv" value="{{ctv}}" />
-    <input type="hidden" name="input" value="{{input}}" />
 
     {% for address in addresses %}
     <input type="hidden" name="addresses" value="{{address}}" />
@@ -55,6 +54,9 @@
 
     <label for="txid">Txid</label>
     <input type="text" name="txid" required />
+
+    <label for="vout">Vout</label>
+    <input type="text" name="vout" required />
 
     <input type="submit" />
   </form>

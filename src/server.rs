@@ -39,7 +39,6 @@ struct CtvTemplate {
     locking_script: String,
     locking_hex: String,
     address: String,
-    input: u32,
     addresses: Vec<Address>,
     amounts: Vec<Amount>,
 }
@@ -47,7 +46,6 @@ struct CtvTemplate {
 #[derive(Deserialize)]
 struct OutputsRequest {
     outputs: String,
-    input: u32,
     network: Network,
 }
 
@@ -80,7 +78,7 @@ async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, App
         }],
         output: outputs,
     };
-    let tmplhash = ctv::ctv(&tx, request.input);
+    let tmplhash = ctv::ctv(&tx, 0);
     let locking_script = ctv::segwit::locking_script(&tmplhash);
     let address = ctv::segwit::locking_address(&locking_script, request.network).to_string();
     Ok(CtvTemplate {
@@ -88,7 +86,6 @@ async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, App
         locking_script: ctv::colorize(&locking_script.to_string()),
         locking_hex: hex::encode(locking_script.into_bytes()),
         address: address.to_string(),
-        input: request.input,
         addresses,
         amounts,
     })
@@ -98,11 +95,11 @@ async fn locking(Form(request): Form<OutputsRequest>) -> Result<CtvTemplate, App
 #[derive(Debug, Deserialize)]
 struct SpendingRequest {
     ctv: String,
-    input: u32,
     addresses: Vec<Address<NetworkUnchecked>>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
     amounts: Vec<Amount>,
     txid: Txid,
+    vout: u32,
 }
 
 #[derive(Template)]
@@ -134,7 +131,7 @@ async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTempla
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: request.txid,
-                vout: request.input,
+                vout: request.vout,
             },
             script_sig: Default::default(),
             sequence: Sequence::ZERO,
