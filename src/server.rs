@@ -14,7 +14,10 @@ use serde_with::{serde_as, DisplayFromStr};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use crate::{ctv, error::AppError};
+use crate::{
+    ctv::{self, Ctv, Output},
+    error::AppError,
+};
 
 pub async fn server() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -42,12 +45,11 @@ async fn index() -> IndexTemplate {
 #[derive(Template)]
 #[template(path = "locking.html")]
 struct CtvTemplate {
-    ctv: String,
+    ctv_hash: String,
     locking_script: String,
     locking_hex: String,
     address: String,
-    addresses: Vec<Address>,
-    amounts: Vec<Amount>,
+    ctv: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,44 +72,39 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
         addresses.push(address);
         amounts.push(amount);
     }
-    let outputs: Vec<_> = addresses
-        .iter()
-        .zip(amounts.iter())
-        .map(|(address, amount)| TxOut {
-            value: *amount,
-            script_pubkey: address.script_pubkey(),
-        })
-        .collect();
-    let tx = Transaction {
+    let ctv = Ctv {
+        network: request.network,
         version: Version::ONE,
-        lock_time: LockTime::ZERO,
-        input: vec![TxIn {
-            sequence: Sequence::ZERO,
-            ..Default::default()
-        }],
-        output: outputs,
+        locktime: LockTime::ZERO,
+        scripts_sigs: Vec::new(),
+        sequences: vec![Sequence::ZERO],
+        outputs: addresses
+            .into_iter()
+            .zip(amounts.into_iter())
+            .map(|(address, amount)| Output::Address {
+                address: address.as_unchecked().clone(),
+                amount,
+            })
+            .collect(),
+        input_index: 0,
     };
-    let tmplhash = ctv::ctv(&tx, 0);
-    let locking_script = ctv::segwit::locking_script(&tmplhash);
-    let address = ctv::segwit::locking_address(&locking_script, request.network).to_string();
+    let ctvhash = ctv.ctv()?;
+    let locking_script = ctv::segwit::locking_script(&ctvhash);
+    let address = ctv::segwit::locking_address(&locking_script, request.network);
+
     tracing::info!("Locking finished.");
     Ok(CtvTemplate {
-        ctv: hex::encode(tmplhash),
+        ctv_hash: hex::encode(ctvhash),
         locking_script: ctv::colorize(&locking_script.to_string()),
         locking_hex: hex::encode(locking_script.into_bytes()),
         address: address.to_string(),
-        addresses,
-        amounts,
+        ctv: serde_json::to_string(&ctv)?,
     })
 }
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 struct SpendingRequest {
     ctv: String,
-    addresses: Vec<Address<NetworkUnchecked>>,
-    #[serde_as(as = "Vec<DisplayFromStr>")]
-    amounts: Vec<Amount>,
     txid: Txid,
     vout: u32,
 }
@@ -121,36 +118,8 @@ struct SpendingTemplate {
 async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTemplate, AppError> {
     tracing::info!("Spending started.");
     tracing::debug!("{request:?}");
-    let ctv = hex::decode(&request.ctv)?;
-    let ctvpb = PushBytesBuf::try_from(ctv.clone())?;
-    let script_sig = bitcoin::script::Builder::new()
-        .push_slice(ctvpb)
-        .into_script();
-    let output: Vec<TxOut> = request
-        .addresses
-        .iter()
-        .zip(request.amounts.iter())
-        .map(|(address, amount)| TxOut {
-            value: *amount,
-            script_pubkey: address.clone().assume_checked().script_pubkey(),
-        })
-        .collect();
-    let mut witness = Witness::new();
-    witness.push(&ctv::segwit::locking_script(&ctv));
-    let tx = Transaction {
-        version: Version::ONE,
-        lock_time: LockTime::ZERO,
-        input: vec![TxIn {
-            previous_output: OutPoint {
-                txid: request.txid,
-                vout: request.vout,
-            },
-            script_sig: Default::default(),
-            sequence: Sequence::ZERO,
-            witness,
-        }],
-        output,
-    };
+    let ctv: Ctv = serde_json::from_str(&request.ctv)?;
+    let tx = ctv.spending_tx(request.txid, request.vout)?;
 
     tracing::info!("Spending finished.");
     Ok(SpendingTemplate {

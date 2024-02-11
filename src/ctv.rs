@@ -1,11 +1,13 @@
 use std::io::{Cursor, Write};
 
+use anyhow::anyhow;
 use bitcoin::{
     absolute::LockTime,
     address::{NetworkChecked, NetworkUnchecked},
     consensus::Encodable,
     transaction::Version,
-    Address, Amount, Network, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+    Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
+    Witness,
 };
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -13,13 +15,13 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ctv {
-    network: Network,
-    version: Version,
-    locktime: LockTime,
-    scripts_sigs: Vec<ScriptBuf>,
-    sequences: Vec<Sequence>,
-    outputs: Vec<Output>,
-    input_index: u32,
+    pub network: Network,
+    pub version: Version,
+    pub locktime: LockTime,
+    pub scripts_sigs: Vec<ScriptBuf>,
+    pub sequences: Vec<Sequence>,
+    pub outputs: Vec<Output>,
+    pub input_index: u32,
 }
 
 impl Ctv {
@@ -45,8 +47,40 @@ impl Ctv {
         })
     }
 
+    pub fn spending_tx(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
+        let tx = Transaction {
+            version: self.version,
+            lock_time: self.locktime,
+            input: vec![TxIn {
+                previous_output: OutPoint { txid, vout },
+                script_sig: Default::default(),
+                sequence: *self
+                    .sequences
+                    .first()
+                    .ok_or_else(|| anyhow!("Missing sequence"))?,
+                witness: self.witness()?,
+            }],
+            output: self.txouts()?,
+        };
+        Ok(tx)
+    }
+
+    pub fn txouts(&self) -> anyhow::Result<Vec<TxOut>> {
+        self.outputs
+            .iter()
+            .map(|output| output.as_txout(self.network))
+            .collect()
+    }
+
     pub fn ctv(&self) -> anyhow::Result<Vec<u8>> {
         Ok(ctv(&self.as_tx()?, self.input_index))
+    }
+
+    fn witness(&self) -> anyhow::Result<Witness> {
+        let mut witness = Witness::new();
+        let script = segwit::locking_script(&self.ctv()?);
+        witness.push(&script);
+        Ok(witness)
     }
 }
 
@@ -70,7 +104,7 @@ impl Output {
     }
 }
 
-pub fn ctv(tx: &Transaction, input: u32) -> Vec<u8> {
+fn ctv(tx: &Transaction, input: u32) -> Vec<u8> {
     let mut buffer = Cursor::new(Vec::<u8>::new());
     tx.version.consensus_encode(&mut buffer).unwrap();
     tx.lock_time.consensus_encode(&mut buffer).unwrap();

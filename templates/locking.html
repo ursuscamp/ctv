@@ -5,7 +5,7 @@
 
 <div class="grid">
   <strong>Template Hash</strong>
-  <code style="grid-column-end: span 4">{{ ctv }}</code>
+  <code style="grid-column-end: span 4">{{ ctv_hash }}</code>
 </div>
 
 <hr />
@@ -45,12 +45,6 @@
 <div>
   <form action="/spending" method="post">
     <input type="hidden" name="ctv" value="{{ctv}}" />
-
-    {% for address in addresses %}
-    <input type="hidden" name="addresses" value="{{address}}" />
-    {% endfor %} {% for amount in amounts %}
-    <input type="hidden" name="amounts" value="{{amount}}" />
-    {% endfor %}
 
     <label for="txid">Txid</label>
     <input type="text" name="txid" required />
