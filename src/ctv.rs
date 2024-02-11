@@ -1,8 +1,74 @@
 use std::io::{Cursor, Write};
 
-use bitcoin::{consensus::Encodable, Transaction};
+use bitcoin::{
+    absolute::LockTime,
+    address::{NetworkChecked, NetworkUnchecked},
+    consensus::Encodable,
+    transaction::Version,
+    Address, Amount, Network, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Ctv {
+    network: Network,
+    version: Version,
+    locktime: LockTime,
+    scripts_sigs: Vec<ScriptBuf>,
+    sequences: Vec<Sequence>,
+    outputs: Vec<Output>,
+    input_index: u32,
+}
+
+impl Ctv {
+    pub fn as_tx(&self) -> anyhow::Result<Transaction> {
+        let input = self
+            .sequences
+            .iter()
+            .map(|seq| TxIn {
+                sequence: *seq,
+                ..Default::default()
+            })
+            .collect();
+        let output: anyhow::Result<Vec<TxOut>> = self
+            .outputs
+            .iter()
+            .map(|output| output.as_txout(self.network))
+            .collect();
+        Ok(Transaction {
+            version: self.version,
+            lock_time: self.locktime,
+            input,
+            output: output?,
+        })
+    }
+
+    pub fn ctv(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(ctv(&self.as_tx()?, self.input_index))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Output {
+    Address {
+        address: Address<NetworkUnchecked>,
+        amount: Amount,
+    },
+}
+
+impl Output {
+    pub fn as_txout(&self, network: Network) -> anyhow::Result<TxOut> {
+        Ok(match self {
+            Output::Address { address, amount } => TxOut {
+                value: *amount,
+                script_pubkey: address.clone().require_network(network)?.script_pubkey(),
+            },
+        })
+    }
+}
 
 pub fn ctv(tx: &Transaction, input: u32) -> Vec<u8> {
     let mut buffer = Cursor::new(Vec::<u8>::new());
@@ -113,17 +179,17 @@ mod tests {
             let td = td.as_object().unwrap();
             let hex_tx = td["hex_tx"].as_str().unwrap();
             let tx: Transaction =
-                bitcoin::consensus::deserialize(&hex::decode(&hex_tx).unwrap()).unwrap();
+                bitcoin::consensus::deserialize(&hex::decode(hex_tx).unwrap()).unwrap();
             let spend_index = td["spend_index"]
                 .as_array()
                 .unwrap()
-                .into_iter()
+                .iter()
                 .map(|i| i.as_i64().unwrap())
                 .collect::<Vec<i64>>();
             let result: Vec<String> = td["result"]
                 .as_array()
                 .unwrap()
-                .into_iter()
+                .iter()
                 .map(|v| v.as_str().unwrap().to_owned())
                 .collect();
 
