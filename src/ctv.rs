@@ -73,7 +73,7 @@ impl Ctv {
     }
 
     pub fn ctv(&self) -> anyhow::Result<Vec<u8>> {
-        Ok(ctv(&self.as_tx()?, self.input_index))
+        Ok(util::ctv(&self.as_tx()?, self.input_index))
     }
 
     fn witness(&self) -> anyhow::Result<Witness> {
@@ -104,71 +104,79 @@ impl Output {
     }
 }
 
-fn ctv(tx: &Transaction, input: u32) -> Vec<u8> {
-    let mut buffer = Cursor::new(Vec::<u8>::new());
-    tx.version.consensus_encode(&mut buffer).unwrap();
-    tx.lock_time.consensus_encode(&mut buffer).unwrap();
-    if let Some(scriptsigs) = scriptsigs(tx) {
-        buffer.write_all(&scriptsigs).unwrap();
+mod util {
+    use std::io::Cursor;
+    use std::io::Write;
+
+    use bitcoin::{consensus::Encodable, Transaction};
+    use sha2::{Digest, Sha256};
+
+    pub(super) fn ctv(tx: &Transaction, input: u32) -> Vec<u8> {
+        let mut buffer = Cursor::new(Vec::<u8>::new());
+        tx.version.consensus_encode(&mut buffer).unwrap();
+        tx.lock_time.consensus_encode(&mut buffer).unwrap();
+        if let Some(scriptsigs) = scriptsigs(tx) {
+            buffer.write_all(&scriptsigs).unwrap();
+        }
+        (tx.input.len() as u32)
+            .consensus_encode(&mut buffer)
+            .unwrap();
+        buffer.write_all(&sequences(tx)).unwrap();
+        (tx.output.len() as u32)
+            .consensus_encode(&mut buffer)
+            .unwrap();
+        buffer.write_all(&outputs(tx)).unwrap();
+        input.consensus_encode(&mut buffer).unwrap();
+        let buffer = buffer.into_inner();
+        sha256(buffer)
     }
-    (tx.input.len() as u32)
-        .consensus_encode(&mut buffer)
-        .unwrap();
-    buffer.write_all(&sequences(tx)).unwrap();
-    (tx.output.len() as u32)
-        .consensus_encode(&mut buffer)
-        .unwrap();
-    buffer.write_all(&outputs(tx)).unwrap();
-    input.consensus_encode(&mut buffer).unwrap();
-    let buffer = buffer.into_inner();
-    sha256(buffer)
-}
 
-fn scriptsigs(tx: &Transaction) -> Option<Vec<u8>> {
-    // If there are no scripts sigs, do nothing
-    if tx.input.iter().all(|txin| txin.script_sig.is_empty()) {
-        return None;
+    fn scriptsigs(tx: &Transaction) -> Option<Vec<u8>> {
+        // If there are no scripts sigs, do nothing
+        if tx.input.iter().all(|txin| txin.script_sig.is_empty()) {
+            return None;
+        }
+
+        let scripts_sigs = tx
+            .input
+            .iter()
+            .fold(Cursor::new(Vec::new()), |mut cursor, txin| {
+                txin.script_sig.consensus_encode(&mut cursor).unwrap();
+                cursor
+            })
+            .into_inner();
+        Some(sha256(scripts_sigs))
     }
 
-    let scripts_sigs = tx
-        .input
-        .iter()
-        .fold(Cursor::new(Vec::new()), |mut cursor, txin| {
-            txin.script_sig.consensus_encode(&mut cursor).unwrap();
-            cursor
-        })
-        .into_inner();
-    Some(sha256(scripts_sigs))
-}
+    fn sequences(tx: &Transaction) -> Vec<u8> {
+        let sequences = tx
+            .input
+            .iter()
+            .fold(Cursor::new(Vec::new()), |mut cursor, txin| {
+                txin.sequence.consensus_encode(&mut cursor).unwrap();
+                cursor
+            })
+            .into_inner();
+        sha256(sequences)
+    }
 
-fn sequences(tx: &Transaction) -> Vec<u8> {
-    let sequences = tx
-        .input
-        .iter()
-        .fold(Cursor::new(Vec::new()), |mut cursor, txin| {
-            txin.sequence.consensus_encode(&mut cursor).unwrap();
-            cursor
-        })
-        .into_inner();
-    sha256(sequences)
-}
+    fn outputs(tx: &Transaction) -> Vec<u8> {
+        let outputs = tx
+            .output
+            .iter()
+            .fold(Cursor::new(Vec::new()), |mut cursor, txout| {
+                txout.consensus_encode(&mut cursor).unwrap();
+                cursor
+            })
+            .into_inner();
+        sha256(outputs)
+    }
 
-fn outputs(tx: &Transaction) -> Vec<u8> {
-    let outputs = tx
-        .output
-        .iter()
-        .fold(Cursor::new(Vec::new()), |mut cursor, txout| {
-            txout.consensus_encode(&mut cursor).unwrap();
-            cursor
-        })
-        .into_inner();
-    sha256(outputs)
-}
-
-pub fn sha256(data: Vec<u8>) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().to_vec()
+    pub fn sha256(data: Vec<u8>) -> Vec<u8> {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        hasher.finalize().to_vec()
+    }
 }
 
 pub fn colorize(script: &str) -> String {
