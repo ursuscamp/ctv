@@ -77,7 +77,6 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
         network: request.network,
         version: Version::ONE,
         locktime: LockTime::ZERO,
-        scripts_sigs: Vec::new(),
         sequences: vec![Sequence::ZERO],
         outputs: addresses
             .into_iter()
@@ -87,7 +86,6 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
                 amount,
             })
             .collect(),
-        input_index: 0,
     };
 
     if let Some(data) = request.data {

@@ -19,10 +19,8 @@ pub struct Ctv {
     pub network: Network,
     pub version: Version,
     pub locktime: LockTime,
-    pub scripts_sigs: Vec<ScriptBuf>,
     pub sequences: Vec<Sequence>,
     pub outputs: Vec<Output>,
-    pub input_index: u32,
 }
 
 impl Ctv {
@@ -74,7 +72,7 @@ impl Ctv {
     }
 
     pub fn ctv(&self) -> anyhow::Result<Vec<u8>> {
-        Ok(util::ctv(&self.as_tx()?, self.input_index))
+        Ok(util::ctv(&self.as_tx()?, 0))
     }
 
     fn witness(&self) -> anyhow::Result<Witness> {
@@ -218,6 +216,7 @@ pub mod segwit {
 
 #[cfg(test)]
 mod tests {
+    use crate::ctv::util::ctv;
     use serde_json::Value;
 
     use super::*;
