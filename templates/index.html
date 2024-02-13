@@ -37,12 +37,20 @@
   <label for="outputs">Outputs</label>
   <textarea name="outputs" id="outputs" required></textarea>
 
-  <label for="network1">Network</label>
-  <select id="network1" name="network" required>
+  <label for="network">Network</label>
+  <select id="network" name="network" required>
     <option value="regtest">Regtest</option>
     <option value="signet">Signet</option>
   </select>
 
   <input type="submit" />
+
+  <details>
+    <summary>Additional Options</summary>
+
+    <label for="data">Data Carrier</label>
+    <input id="data" name="data" />
+    <small>Commit to an OP_RETURN output.</small>
+  </details>
 </form>
 {% endblock %}

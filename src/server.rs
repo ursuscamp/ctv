@@ -56,6 +56,7 @@ struct CtvTemplate {
 struct LockingRequest {
     outputs: String,
     network: Network,
+    data: Option<String>,
 }
 
 async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, AppError> {
@@ -72,7 +73,7 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
         addresses.push(address);
         amounts.push(amount);
     }
-    let ctv = Ctv {
+    let mut ctv = Ctv {
         network: request.network,
         version: Version::ONE,
         locktime: LockTime::ZERO,
@@ -88,6 +89,11 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
             .collect(),
         input_index: 0,
     };
+
+    if let Some(data) = request.data {
+        ctv.outputs.push(Output::Data { data });
+    }
+
     let ctvhash = ctv.ctv()?;
     let locking_script = ctv::segwit::locking_script(&ctvhash);
     let address = ctv::segwit::locking_address(&locking_script, request.network);

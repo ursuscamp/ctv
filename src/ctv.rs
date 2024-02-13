@@ -5,6 +5,7 @@ use bitcoin::{
     absolute::LockTime,
     address::{NetworkChecked, NetworkUnchecked},
     consensus::Encodable,
+    script::{PushBytes, PushBytesBuf},
     transaction::Version,
     Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
     Witness,
@@ -91,6 +92,9 @@ pub enum Output {
         address: Address<NetworkUnchecked>,
         amount: Amount,
     },
+    Data {
+        data: String,
+    },
 }
 
 impl Output {
@@ -100,6 +104,14 @@ impl Output {
                 value: *amount,
                 script_pubkey: address.clone().require_network(network)?.script_pubkey(),
             },
+            Output::Data { data } => {
+                let mut pb = PushBytesBuf::new();
+                pb.extend_from_slice(data.as_bytes())?;
+                TxOut {
+                    value: Amount::ZERO,
+                    script_pubkey: ScriptBuf::new_op_return(&pb),
+                }
+            }
         })
     }
 }
