@@ -57,6 +57,7 @@ struct LockingRequest {
     outputs: String,
     network: Network,
     data: Option<String>,
+    congestion: Option<bool>,
 }
 
 async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, AppError> {
@@ -73,19 +74,26 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
         addresses.push(address);
         amounts.push(amount);
     }
-    let mut ctv = Ctv {
-        network: request.network,
-        version: Version::ONE,
-        locktime: LockTime::ZERO,
-        sequences: vec![Sequence::ZERO],
-        outputs: addresses
-            .into_iter()
-            .zip(amounts.into_iter())
-            .map(|(address, amount)| Output::Address {
-                address: address.as_unchecked().clone(),
-                amount,
-            })
-            .collect(),
+
+    let mut ctv = if request.congestion.unwrap_or_default() {
+        tracing::debug!("User requested congestion control tree.");
+        locking_tree(&addresses, &amounts, request.network).unwrap()
+    } else {
+        tracing::debug!("User requested simple CTV.");
+        Ctv {
+            network: request.network,
+            version: Version::ONE,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::ZERO],
+            outputs: addresses
+                .into_iter()
+                .zip(amounts.into_iter())
+                .map(|(address, amount)| Output::Address {
+                    address: address.as_unchecked().clone(),
+                    amount,
+                })
+                .collect(),
+        }
     };
 
     if let Some(data) = request.data {
@@ -103,6 +111,36 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
         locking_hex: hex::encode(locking_script.into_bytes()),
         address: address.to_string(),
         ctv: serde_json::to_string(&ctv)?,
+    })
+}
+
+fn locking_tree(addresses: &[Address], amounts: &[Amount], network: Network) -> Option<Ctv> {
+    let address = addresses.first()?.clone();
+    let amount = *amounts.first()?;
+
+    // The remaining amounts after the current output are the total amount we can send onto the next CTV
+    let rem: Amount = amounts[1..].iter().copied().sum();
+
+    // Recrusively build the locking tree
+    let next_ctv = locking_tree(&addresses[1..], &amounts[1..], network);
+    let mut outputs = Vec::new();
+    if let Some(ctv) = next_ctv {
+        outputs.push(Output::Tree {
+            tree: Box::new(ctv),
+            amount: rem,
+        });
+    }
+    outputs.push(Output::Address {
+        address: address.as_unchecked().clone(),
+        amount,
+    });
+
+    Some(Ctv {
+        network,
+        version: Version::ONE,
+        locktime: LockTime::ZERO,
+        sequences: vec![Sequence::ZERO],
+        outputs,
     })
 }
 

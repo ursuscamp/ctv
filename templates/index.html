@@ -51,6 +51,15 @@
     <label for="data">Data Carrier</label>
     <input id="data" name="data" />
     <small>Commit to an OP_RETURN output.</small>
+
+    <label for="congestion">
+      <input type="checkbox" id="congestion" name="congestion" value="true" />
+      Congestion Control
+    </label>
+    <small>
+      Implement the above outputs as a multi-transaction congestion control tree
+      instead of a single spend</small
+    >
   </details>
 </form>
 {% endblock %}

@@ -93,6 +93,10 @@ pub enum Output {
     Data {
         data: String,
     },
+    Tree {
+        tree: Box<Ctv>,
+        amount: Amount,
+    },
 }
 
 impl Output {
@@ -108,6 +112,14 @@ impl Output {
                 TxOut {
                     value: Amount::ZERO,
                     script_pubkey: ScriptBuf::new_op_return(&pb),
+                }
+            }
+            Output::Tree { tree, amount } => {
+                let tmplhash = tree.ctv()?;
+                let script_pubkey = segwit::locking_script(&tmplhash);
+                TxOut {
+                    value: *amount,
+                    script_pubkey,
                 }
             }
         })
