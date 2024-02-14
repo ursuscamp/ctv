@@ -46,7 +46,8 @@ impl Ctv {
         })
     }
 
-    pub fn spending_tx(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
+    pub fn spending_tx(&self, txid: Txid, vout: u32) -> anyhow::Result<Vec<Transaction>> {
+        let mut transactions = Vec::new();
         let tx = Transaction {
             version: self.version,
             lock_time: self.locktime,
@@ -61,7 +62,12 @@ impl Ctv {
             }],
             output: self.txouts()?,
         };
-        Ok(tx)
+        let current_txid = tx.txid();
+        transactions.push(tx);
+        if let Some(Output::Tree { tree, amount: _ }) = self.outputs.first() {
+            transactions.extend_from_slice(&tree.spending_tx(current_txid, 0)?);
+        }
+        Ok(transactions)
     }
 
     pub fn txouts(&self) -> anyhow::Result<Vec<TxOut>> {
@@ -116,10 +122,10 @@ impl Output {
             }
             Output::Tree { tree, amount } => {
                 let tmplhash = tree.ctv()?;
-                let script_pubkey = segwit::locking_script(&tmplhash);
+                let locking_script = segwit::locking_script(&tmplhash);
                 TxOut {
                     value: *amount,
-                    script_pubkey,
+                    script_pubkey: Address::p2wsh(&locking_script, network).script_pubkey(),
                 }
             }
         })

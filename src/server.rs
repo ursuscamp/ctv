@@ -5,9 +5,9 @@ use askama::Template;
 use axum::Router;
 use axum_extra::extract::Form;
 use bitcoin::{
-    absolute::LockTime, address::NetworkUnchecked, script::PushBytesBuf, transaction::Version,
-    Address, Amount, Network, OutPoint, Psbt, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
-    Witness,
+    absolute::LockTime, address::NetworkUnchecked, consensus::Encodable, script::PushBytesBuf,
+    transaction::Version, Address, Amount, Network, OutPoint, Psbt, ScriptBuf, Sequence,
+    Transaction, TxIn, TxOut, Txid, Witness,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
@@ -154,7 +154,7 @@ struct SpendingRequest {
 #[derive(Template)]
 #[template(path = "spending.html.jinja")]
 struct SpendingTemplate {
-    tx: String,
+    tx: Vec<String>,
 }
 
 async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTemplate, AppError> {
@@ -165,6 +165,10 @@ async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTempla
 
     tracing::info!("Spending finished.");
     Ok(SpendingTemplate {
-        tx: hex::encode(bitcoin::consensus::serialize(&tx)),
+        tx: tx
+            .iter()
+            .map(bitcoin::consensus::serialize)
+            .map(hex::encode)
+            .collect(),
     })
 }
