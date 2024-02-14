@@ -1,13 +1,26 @@
 {% extends "base.html.jinja" %}
 {% block content %}
   <h1>CTV Playground</h1>
-  <p>
-    Broadcast this transaction using your node to unlock the Bitcoin and send it
-    to your committed outputs.
-  </p>
-  {% for tx in tx %}
+  {% if txs.len() == 1 %}
+    <p>
+      Broadcast this transaction using your node to unlock the Bitcoin and send
+      it to your committed outputs.
+    </p>
+  {% else %}
+    <p>
+      Broadcast these transaction, in order, using your node to unroll the
+      congestion control tree.
+    </p>
+  {% endif %}
+  {% for tx in txs %}
+    {% if loop.index > 1 %}
+      <hr />
+    {% endif %}
     <div class="grid">
-      <strong>Raw Transaction</strong>
+      <strong
+        >Raw Transaction
+        {% if txs.len() > 1 %}#{{ loop.index }}{% endif %}</strong
+      >
       <code style="grid-column-end: span 4">{{ tx }}</code>
     </div>
   {% endfor %}

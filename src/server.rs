@@ -90,7 +90,7 @@ async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, App
                 .zip(amounts.into_iter())
                 .map(|(address, amount)| Output::Address {
                     address: address.as_unchecked().clone(),
-                    amount,
+                    amount: amount - Amount::from_sat(600),
                 })
                 .collect(),
         }
@@ -132,7 +132,7 @@ fn locking_tree(addresses: &[Address], amounts: &[Amount], network: Network) -> 
     }
     outputs.push(Output::Address {
         address: address.as_unchecked().clone(),
-        amount,
+        amount: amount - Amount::from_sat(600),
     });
 
     Some(Ctv {
@@ -154,7 +154,7 @@ struct SpendingRequest {
 #[derive(Template)]
 #[template(path = "spending.html.jinja")]
 struct SpendingTemplate {
-    tx: Vec<String>,
+    txs: Vec<String>,
 }
 
 async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTemplate, AppError> {
@@ -165,7 +165,7 @@ async fn spending(Form(request): Form<SpendingRequest>) -> Result<SpendingTempla
 
     tracing::info!("Spending finished.");
     Ok(SpendingTemplate {
-        tx: tx
+        txs: tx
             .iter()
             .map(bitcoin::consensus::serialize)
             .map(hex::encode)
