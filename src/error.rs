@@ -3,7 +3,7 @@ use askama_axum::IntoResponse;
 use axum::http::StatusCode;
 
 #[derive(Template)]
-#[template(path = "error.html")]
+#[template(path = "error.html.jinja")]
 pub struct ErrorTemplate {
     message: String,
 }

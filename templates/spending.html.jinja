@@ -1,0 +1,14 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+  <h1>CTV Playground</h1>
+  <p>
+    Broadcast this transaction using your node to unlock the Bitcoin and send it
+    to your committed outputs.
+  </p>
+  {% for tx in tx %}
+    <div class="grid">
+      <strong>Raw Transaction</strong>
+      <code style="grid-column-end: span 4">{{ tx }}</code>
+    </div>
+  {% endfor %}
+{% endblock %}

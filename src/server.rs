@@ -36,14 +36,14 @@ pub async fn server() -> anyhow::Result<()> {
 }
 
 #[derive(Template)]
-#[template(path = "index.html")]
+#[template(path = "index.html.jinja")]
 struct IndexTemplate;
 
 async fn index() -> IndexTemplate {
     IndexTemplate
 }
 #[derive(Template)]
-#[template(path = "locking.html")]
+#[template(path = "locking.html.jinja")]
 struct CtvTemplate {
     ctv_hash: String,
     locking_script: String,
@@ -152,7 +152,7 @@ struct SpendingRequest {
 }
 
 #[derive(Template)]
-#[template(path = "spending.html")]
+#[template(path = "spending.html.jinja")]
 struct SpendingTemplate {
     tx: String,
 }

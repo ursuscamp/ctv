@@ -1,0 +1,66 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+  <h1>CTV Playground</h1>
+
+  <h2>Locking Transaction</h2>
+
+  <p>
+    <code>OP_CTV</code> (as described in
+    <a href="https://github.com/bitcoin/bips/blob/master/bip-0119.mediawiki"
+      >BIP-119</a
+    >) locks a Bitcoin UTXO to only be spent by a certain enumerated set of
+    outputs. Using the tools on this page, you can play with that on Signet or
+    Regtest using
+    <a href="https://github.com/bitcoin-inquisition/bitcoin"
+      >Bitcoin Inquisition</a
+    >. Using this tool, you will create a CTV address and lock Bitcoin into it,
+    then you will create a spending transactions which will spend to
+    <em>only</em> those committed outputs.
+  </p>
+
+  <p>
+    Describe the future outputs you wish your transaction to commit to. They
+    should take the form:
+
+    <br />
+    <code>
+      address1:1.2btc <br />
+      address2:4323sats
+    </code>
+    <br />
+
+    You can use any combination of addresses and amounts (in sats or BTC) that
+    you like. After you lock the Bitcoin into these outputs, you will NOT be
+    able to send your Bitcoin anywhere else.
+  </p>
+
+  <form action="/locking" method="post">
+    <label for="outputs">Outputs</label>
+    <textarea name="outputs" id="outputs" required></textarea>
+
+    <label for="network">Network</label>
+    <select id="network" name="network" required>
+      <option value="regtest">Regtest</option>
+      <option value="signet">Signet</option>
+    </select>
+
+    <input type="submit" />
+
+    <details>
+      <summary>Additional Options</summary>
+
+      <label for="data">Data Carrier</label>
+      <input id="data" name="data" />
+      <small>Commit to an OP_RETURN output.</small>
+
+      <label for="congestion">
+        <input type="checkbox" id="congestion" name="congestion" value="true" />
+        Congestion Control
+      </label>
+      <small>
+        Implement the above outputs as a multi-transaction congestion control
+        tree instead of a single spend</small
+      >
+    </details>
+  </form>
+{% endblock %}
