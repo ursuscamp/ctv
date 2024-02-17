@@ -1,7 +1,5 @@
 {% extends "base.html.jinja" %}
 {% block content %}
-  <h1>CTV Playground</h1>
-
   <p>
     <code>OP_CTV</code> (as described in
     <a href="https://github.com/bitcoin/bips/blob/master/bip-0119.mediawiki"
@@ -75,7 +73,7 @@
     </p>
   </details>
 
-  <form action="/locking" method="post">
+  <form action="/simple/locking" method="post">
     <label for="outputs">Outputs</label>
     <textarea name="outputs" id="outputs" required></textarea>
 

@@ -1,7 +1,5 @@
 {% extends "base.html.jinja" %}
 {% block content %}
-  <h1>CTV Playground</h1>
-
   <p>Using the address below, you can now send Bitcoin a CTV lock!</p>
 
   <div class="grid">
@@ -44,7 +42,7 @@
   </p>
 
   <div>
-    <form action="/spending" method="post">
+    <form action="/simple/spending" method="post">
       <input type="hidden" name="ctv" value="{{ ctv }}" />
 
       <label for="txid">Txid</label>
