@@ -5,11 +5,13 @@ use bitcoin::{
     absolute::LockTime,
     address::{NetworkChecked, NetworkUnchecked},
     consensus::Encodable,
+    opcodes::all::{OP_CHECKSIGVERIFY, OP_CSV, OP_ELSE, OP_IF},
     script::{PushBytes, PushBytesBuf},
     transaction::Version,
     Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
     Witness,
 };
+use miniscript::bitcoin::opcodes::all::OP_DROP;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -103,6 +105,11 @@ pub enum Output {
         tree: Box<Ctv>,
         amount: Amount,
     },
+    Vault {
+        hot: Address<NetworkUnchecked>,
+        amount: Amount,
+        delay: u16,
+    },
 }
 
 impl Output {
@@ -126,6 +133,22 @@ impl Output {
                 TxOut {
                     value: *amount,
                     script_pubkey: Address::p2wsh(&locking_script, network).script_pubkey(),
+                }
+            }
+            Output::Vault {
+                amount,
+                delay,
+                hot: cold,
+            } => {
+                let delay = Sequence::from_height(*delay);
+                assert!(delay.is_relative_lock_time());
+                let script = bitcoin::script::Builder::new()
+                    .push_sequence(delay)
+                    .push_opcode(OP_CSV)
+                    .into_script();
+                TxOut {
+                    value: *amount,
+                    script_pubkey: Address::p2wsh(&script, network).script_pubkey(),
                 }
             }
         })
