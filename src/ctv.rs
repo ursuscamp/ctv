@@ -140,12 +140,7 @@ impl Output {
                 delay,
                 hot: cold,
             } => {
-                let delay = Sequence::from_height(*delay);
-                assert!(delay.is_relative_lock_time());
-                let script = bitcoin::script::Builder::new()
-                    .push_sequence(delay)
-                    .push_opcode(OP_CSV)
-                    .into_script();
+                let script = segwit::vault_locking_script(*delay);
                 TxOut {
                     value: *amount,
                     script_pubkey: Address::p2wsh(&script, network).script_pubkey(),
@@ -240,7 +235,10 @@ pub fn colorize(script: &str) -> String {
 }
 
 pub mod segwit {
-    use bitcoin::{opcodes::all::OP_NOP4, Address, Network, Script, ScriptBuf};
+    use bitcoin::{
+        opcodes::all::{OP_CSV, OP_NOP4},
+        Address, Network, Script, ScriptBuf, Sequence,
+    };
 
     pub fn locking_address(script: &Script, network: Network) -> Address {
         Address::p2wsh(script, network)
@@ -251,6 +249,13 @@ pub mod segwit {
         bitcoin::script::Builder::new()
             .push_slice(bytes)
             .push_opcode(OP_NOP4)
+            .into_script()
+    }
+
+    pub fn vault_locking_script(delay: u16) -> ScriptBuf {
+        bitcoin::script::Builder::new()
+            .push_sequence(Sequence::from_height(delay))
+            .push_opcode(OP_CSV)
             .into_script()
     }
 }

@@ -4,4 +4,17 @@
   <p>
     <code>{{ address }}</code>
   </p>
+
+  <form action="/vaults/spending" method="post">
+    <input type="hidden" name="ctv" value="{{ ctv }}" />
+    <input type="hidden" name="delay" value="{{ delay }}" />
+
+    <label for="txid">Txid</label>
+    <input type="text" name="txid" id="txid" />
+
+    <label for="vout">Vout</label>
+    <input type="text" name="vout" id="voud" />
+
+    <input type="submit" />
+  </form>
 {% endblock %}

@@ -32,7 +32,8 @@ pub async fn server() -> anyhow::Result<()> {
         .route("/simple/locking", axum::routing::post(simple::locking))
         .route("/simple/spending", axum::routing::post(simple::spending))
         .route("/vaults", axum::routing::get(vaults::index))
-        .route("/vaults/locking", axum::routing::post(vaults::locking));
+        .route("/vaults/locking", axum::routing::post(vaults::locking))
+        .route("/vaults/spending", axum::routing::post(vaults::spending));
     let listener = TcpListener::bind("localhost:5555").await?;
 
     tracing::info!("Starting server on localhost:5555");
