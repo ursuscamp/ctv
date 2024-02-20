@@ -107,6 +107,7 @@ pub enum Output {
     },
     Vault {
         hot: Address<NetworkUnchecked>,
+        cold: Address<NetworkUnchecked>,
         amount: Amount,
         delay: u16,
     },
@@ -138,9 +139,16 @@ impl Output {
             Output::Vault {
                 amount,
                 delay,
-                hot: cold,
+                hot,
+                cold,
             } => {
-                let script = segwit::vault_locking_script(*delay);
+                let script = segwit::vault_locking_script(
+                    *delay,
+                    cold.clone(),
+                    hot.clone(),
+                    network,
+                    *amount,
+                )?;
                 TxOut {
                     value: *amount,
                     script_pubkey: Address::p2wsh(&script, network).script_pubkey(),
@@ -236,9 +244,15 @@ pub fn colorize(script: &str) -> String {
 
 pub mod segwit {
     use bitcoin::{
-        opcodes::all::{OP_CSV, OP_NOP4},
-        Address, Network, Script, ScriptBuf, Sequence,
+        absolute::LockTime,
+        address::NetworkUnchecked,
+        opcodes::all::{OP_0NOTEQUAL, OP_CSV, OP_DROP, OP_ELSE, OP_ENDIF, OP_IF, OP_NOP4},
+        script::PushBytesBuf,
+        transaction::Version,
+        Address, Amount, Network, Script, ScriptBuf, Sequence,
     };
+
+    use super::{Ctv, Output};
 
     pub fn locking_address(script: &Script, network: Network) -> Address {
         Address::p2wsh(script, network)
@@ -252,11 +266,42 @@ pub mod segwit {
             .into_script()
     }
 
-    pub fn vault_locking_script(delay: u16) -> ScriptBuf {
-        bitcoin::script::Builder::new()
+    pub fn vault_locking_script(
+        delay: u16,
+        cold: Address<NetworkUnchecked>,
+        hot: Address<NetworkUnchecked>,
+        network: Network,
+        amount: Amount,
+    ) -> anyhow::Result<ScriptBuf> {
+        let cold_ctv = Ctv {
+            network,
+            version: Version::ONE,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::ZERO],
+            outputs: vec![Output::Address {
+                address: cold,
+                amount: amount - Amount::from_sat(600),
+            }],
+        };
+        let cold_hash = PushBytesBuf::try_from(cold_ctv.ctv()?)?;
+        let mut hot_ctv = cold_ctv.clone();
+        hot_ctv.outputs[0] = Output::Address {
+            address: hot,
+            amount: amount - Amount::from_sat(600),
+        };
+        let hot_hash = PushBytesBuf::try_from(hot_ctv.ctv()?)?;
+        Ok(bitcoin::script::Builder::new()
+            .push_opcode(OP_IF)
             .push_sequence(Sequence::from_height(delay))
             .push_opcode(OP_CSV)
-            .into_script()
+            .push_opcode(OP_DROP)
+            .push_slice(&hot_hash)
+            .push_opcode(OP_NOP4)
+            .push_opcode(OP_ELSE)
+            .push_slice(&cold_hash)
+            .push_opcode(OP_NOP4)
+            .push_opcode(OP_ENDIF)
+            .into_script())
     }
 }
 

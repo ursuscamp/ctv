@@ -1,7 +1,15 @@
 {% extends "base.html.jinja" %}
 
 {% block content %}
-  <p><code>{{ tx }}</code></p>
+  <div class="grid">
+    <strong>Spend to Hot Address</strong>
+    <code style="grid-column-end: span 4">{{ hot_tx }}</code>
+  </div>
 
-  <p><code>{{ script }}</code></p>
+  <hr />
+
+  <div class="grid">
+    <strong>Spend to Cold Address</strong>
+    <code style="grid-column-end: span 4">{{ cold_tx }}</code>
+  </div>
 {% endblock %}

@@ -2,15 +2,21 @@
 
 {% block content %}
   <div class="grid">
-    <strong>Address</strong>
-    <code style="grid-column-end: span 4">{{ address }}</code>
+    <strong>Unvaulting Transaction</strong>
+    <code style="grid-column-end: span 4">{{ tx }}</code>
   </div>
 
   <hr />
 
-  <form action="/vaults/unvaulting" method="post">
+  <div class="grid">
+    <strong>Vault Locking Script</strong>
+    <code style="grid-column-end: span 4">{{ script }}</code>
+  </div>
+
+  <hr />
+
+  <form action="/vaults/spending" method="post">
     <input type="hidden" name="ctv" value="{{ ctv }}" />
-    <input type="hidden" name="delay" value="{{ delay }}" />
 
     <label for="txid">Txid</label>
     <input type="text" name="txid" id="txid" />

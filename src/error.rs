@@ -1,3 +1,5 @@
+use std::{convert::Infallible, str::FromStr};
+
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::http::StatusCode;
@@ -31,3 +33,9 @@ where
         Self(err.into())
     }
 }
+
+// impl AppError {
+//     pub fn message(msg: &str) -> AppError {
+//         AppError(anyhow::Error::from(msg.to_string()))
+//     }
+// }

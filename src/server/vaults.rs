@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail};
 use askama::Template;
 use axum::Form;
 use bitcoin::{
@@ -55,6 +56,7 @@ pub(crate) async fn locking(
         sequences: vec![Sequence::from_height(request.block_delay)],
         outputs: vec![Output::Vault {
             hot: request.hot_address,
+            cold: request.cold_address,
             amount: request.amount - Amount::from_sat(600),
             delay: request.block_delay,
         }],
@@ -70,7 +72,7 @@ pub(crate) async fn locking(
 }
 
 #[derive(Deserialize)]
-pub(crate) struct SpendingRequest {
+pub(crate) struct UnvaultingRequest {
     ctv: String,
     delay: u16,
     txid: Txid,
@@ -78,18 +80,48 @@ pub(crate) struct SpendingRequest {
 }
 
 #[derive(Template)]
-#[template(path = "vaults/spending.html.jinja")]
-pub(crate) struct SpendingTemplate {
+#[template(path = "vaults/unvaulting.html.jinja")]
+pub(crate) struct UnvaultingTemplate {
+    ctv: String,
     script: String,
     tx: String,
 }
 
-pub(crate) async fn spending(
-    Form(request): Form<SpendingRequest>,
-) -> anyhow::Result<SpendingTemplate, AppError> {
+pub(crate) async fn unvaulting(
+    Form(request): Form<UnvaultingRequest>,
+) -> anyhow::Result<UnvaultingTemplate, AppError> {
     let ctv: Ctv = serde_json::from_str(&request.ctv)?;
     let tx = ctv.spending_tx(request.txid, request.vout)?;
     let tx = hex::encode(bitcoin::consensus::serialize(&tx[0]));
-    let script = ctv::segwit::vault_locking_script(request.delay).to_string();
-    Ok(SpendingTemplate { script, tx })
+    match ctv.outputs[0].clone() {
+        Output::Vault {
+            hot,
+            cold,
+            amount,
+            delay,
+        } => {
+            let script = ctv::segwit::vault_locking_script(delay, cold, hot, ctv.network, amount)?
+                .to_string();
+            Ok(UnvaultingTemplate {
+                ctv: request.ctv.clone(),
+                script,
+                tx,
+            })
+        }
+        _ => Err(anyhow!("Invalid vault construction").into()),
+    }
+}
+
+#[derive(Template)]
+#[template(path = "vaults/spending.html.jinja")]
+pub(crate) struct SpendingTemplate {
+    cold_tx: String,
+    hot_tx: String,
+}
+
+pub(crate) async fn spending() -> anyhow::Result<SpendingTemplate, AppError> {
+    Ok(SpendingTemplate {
+        cold_tx: String::new(),
+        hot_tx: String::new(),
+    })
 }
