@@ -16,7 +16,9 @@
   <hr />
 
   <form action="/vaults/spending" method="post">
-    <input type="hidden" name="ctv" value="{{ ctv }}" />
+    <input type="hidden" name="unvault_ctv" value="{{ unvault_ctv }}" />
+    <input type="hidden" name="hot_ctv" value="{{ hot_ctv }}" />
+    <input type="hidden" name="cold_ctv" value="{{ cold_ctv }}" />
 
     <label for="txid">Txid</label>
     <input type="text" name="txid" id="txid" />

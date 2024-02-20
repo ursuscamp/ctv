@@ -31,7 +31,9 @@ pub(crate) async fn index() -> IndexTemplate {
 #[template(path = "vaults/locking.html.jinja")]
 pub(crate) struct LockingTemplate {
     delay: u16,
-    ctv: String,
+    unvault_ctv: String,
+    hot_ctv: String,
+    cold_ctv: String,
     address: Address<NetworkChecked>,
 }
 
@@ -49,31 +51,53 @@ pub(crate) struct LockingRequest {
 pub(crate) async fn locking(
     Form(request): Form<LockingRequest>,
 ) -> anyhow::Result<LockingTemplate, AppError> {
-    let ctv = Ctv {
+    let unvault_amount = request.amount - Amount::from_sat(600);
+    let unvault_ctv = Ctv {
         network: request.network,
         version: Version::TWO,
         locktime: LockTime::ZERO,
         sequences: vec![Sequence::from_height(request.block_delay)],
         outputs: vec![Output::Vault {
-            hot: request.hot_address,
-            cold: request.cold_address,
+            hot: request.hot_address.clone(),
+            cold: request.cold_address.clone(),
             amount: request.amount - Amount::from_sat(600),
             delay: request.block_delay,
         }],
     };
-    let tmplhash = ctv.ctv()?;
-    let locking_script = locking_script(&tmplhash);
+    let spend_amount = unvault_amount - Amount::from_sat(600);
+    let hot_ctv = Ctv {
+        network: request.network,
+        version: Version::ONE,
+        locktime: LockTime::ZERO,
+        sequences: vec![Sequence::ZERO],
+        outputs: vec![Output::Address {
+            address: request.hot_address.clone(),
+            amount: spend_amount,
+        }],
+    };
+
+    let mut cold_ctv = hot_ctv.clone();
+    cold_ctv.outputs[0] = Output::Address {
+        address: request.cold_address.clone(),
+        amount: spend_amount,
+    };
+    let unvault_tmplhash = unvault_ctv.ctv()?;
+    let locking_script = locking_script(&unvault_tmplhash);
     let address = locking_address(&locking_script, request.network);
     Ok(LockingTemplate {
         delay: request.block_delay,
-        ctv: serde_json::to_string(&ctv)?,
+        unvault_ctv: serde_json::to_string(&unvault_ctv)?,
+        hot_ctv: serde_json::to_string(&hot_ctv)?,
+        cold_ctv: serde_json::to_string(&cold_ctv)?,
         address: address.clone(),
     })
 }
 
 #[derive(Deserialize)]
 pub(crate) struct UnvaultingRequest {
-    ctv: String,
+    unvault_ctv: String,
+    hot_ctv: String,
+    cold_ctv: String,
     delay: u16,
     txid: Txid,
     vout: u32,
@@ -82,7 +106,9 @@ pub(crate) struct UnvaultingRequest {
 #[derive(Template)]
 #[template(path = "vaults/unvaulting.html.jinja")]
 pub(crate) struct UnvaultingTemplate {
-    ctv: String,
+    unvault_ctv: String,
+    hot_ctv: String,
+    cold_ctv: String,
     script: String,
     tx: String,
 }
@@ -90,7 +116,7 @@ pub(crate) struct UnvaultingTemplate {
 pub(crate) async fn unvaulting(
     Form(request): Form<UnvaultingRequest>,
 ) -> anyhow::Result<UnvaultingTemplate, AppError> {
-    let ctv: Ctv = serde_json::from_str(&request.ctv)?;
+    let ctv: Ctv = serde_json::from_str(&request.unvault_ctv)?;
     let tx = ctv.spending_tx(request.txid, request.vout)?;
     let tx = hex::encode(bitcoin::consensus::serialize(&tx[0]));
     match ctv.outputs[0].clone() {
@@ -103,13 +129,24 @@ pub(crate) async fn unvaulting(
             let script = ctv::segwit::vault_locking_script(delay, cold, hot, ctv.network, amount)?
                 .to_string();
             Ok(UnvaultingTemplate {
-                ctv: request.ctv.clone(),
+                unvault_ctv: request.unvault_ctv.clone(),
+                hot_ctv: request.hot_ctv,
+                cold_ctv: request.cold_ctv,
                 script,
                 tx,
             })
         }
         _ => Err(anyhow!("Invalid vault construction").into()),
     }
+}
+
+#[derive(Deserialize)]
+pub(crate) struct SpendingRequest {
+    unvault_ctv: String,
+    hot_ctv: String,
+    cold_ctv: String,
+    txid: Txid,
+    vout: u32,
 }
 
 #[derive(Template)]
@@ -119,9 +156,15 @@ pub(crate) struct SpendingTemplate {
     hot_tx: String,
 }
 
-pub(crate) async fn spending() -> anyhow::Result<SpendingTemplate, AppError> {
+pub(crate) async fn spending(
+    Form(request): Form<SpendingRequest>,
+) -> anyhow::Result<SpendingTemplate, AppError> {
+    let hot_ctv: Ctv = serde_json::from_str(&request.hot_ctv)?;
+    let hot_tx = hot_ctv.spending_tx(request.txid, request.vout)?;
+    let cold_ctv: Ctv = serde_json::from_str(&request.cold_ctv)?;
+    let cold_tx = cold_ctv.spending_tx(request.txid, request.vout)?;
     Ok(SpendingTemplate {
-        cold_tx: String::new(),
-        hot_tx: String::new(),
+        cold_tx: hex::encode(bitcoin::consensus::serialize(&cold_tx)),
+        hot_tx: hex::encode(bitcoin::consensus::serialize(&hot_tx)),
     })
 }
