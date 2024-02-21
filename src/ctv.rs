@@ -105,12 +105,6 @@ pub enum Output {
         tree: Box<Ctv>,
         amount: Amount,
     },
-    Vault {
-        hot: Address<NetworkUnchecked>,
-        cold: Address<NetworkUnchecked>,
-        amount: Amount,
-        delay: u16,
-    },
 }
 
 impl Output {
@@ -134,24 +128,6 @@ impl Output {
                 TxOut {
                     value: *amount,
                     script_pubkey: Address::p2wsh(&locking_script, network).script_pubkey(),
-                }
-            }
-            Output::Vault {
-                amount,
-                delay,
-                hot,
-                cold,
-            } => {
-                let script = segwit::vault_locking_script(
-                    *delay,
-                    cold.clone(),
-                    hot.clone(),
-                    network,
-                    *amount,
-                )?;
-                TxOut {
-                    value: *amount,
-                    script_pubkey: Address::p2wsh(&script, network).script_pubkey(),
                 }
             }
         })
@@ -295,10 +271,10 @@ pub mod segwit {
             .push_sequence(Sequence::from_height(delay))
             .push_opcode(OP_CSV)
             .push_opcode(OP_DROP)
-            .push_slice(&hot_hash)
+            .push_slice(hot_hash)
             .push_opcode(OP_NOP4)
             .push_opcode(OP_ELSE)
-            .push_slice(&cold_hash)
+            .push_slice(cold_hash)
             .push_opcode(OP_NOP4)
             .push_opcode(OP_ENDIF)
             .into_script())

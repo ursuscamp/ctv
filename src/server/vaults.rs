@@ -17,6 +17,7 @@ use crate::{
         Ctv, Output,
     },
     error::AppError,
+    vault::Vault,
 };
 
 #[derive(Template)]
@@ -30,10 +31,7 @@ pub(crate) async fn index() -> IndexTemplate {
 #[derive(Template)]
 #[template(path = "vaults/locking.html.jinja")]
 pub(crate) struct LockingTemplate {
-    delay: u16,
-    unvault_ctv: String,
-    hot_ctv: String,
-    cold_ctv: String,
+    vault: String,
     address: Address<NetworkChecked>,
 }
 
@@ -48,57 +46,30 @@ pub(crate) struct LockingRequest {
     network: Network,
 }
 
+impl From<LockingRequest> for Vault {
+    fn from(value: LockingRequest) -> Self {
+        Vault {
+            hot: value.hot_address,
+            cold: value.cold_address,
+            amount: value.amount,
+            network: value.network,
+            delay: value.block_delay,
+        }
+    }
+}
+
 pub(crate) async fn locking(
     Form(request): Form<LockingRequest>,
 ) -> anyhow::Result<LockingTemplate, AppError> {
-    let unvault_amount = request.amount - Amount::from_sat(600);
-    let unvault_ctv = Ctv {
-        network: request.network,
-        version: Version::TWO,
-        locktime: LockTime::ZERO,
-        sequences: vec![Sequence::from_height(request.block_delay)],
-        outputs: vec![Output::Vault {
-            hot: request.hot_address.clone(),
-            cold: request.cold_address.clone(),
-            amount: request.amount - Amount::from_sat(600),
-            delay: request.block_delay,
-        }],
-    };
-    let spend_amount = unvault_amount - Amount::from_sat(600);
-    let hot_ctv = Ctv {
-        network: request.network,
-        version: Version::ONE,
-        locktime: LockTime::ZERO,
-        sequences: vec![Sequence::ZERO],
-        outputs: vec![Output::Address {
-            address: request.hot_address.clone(),
-            amount: spend_amount,
-        }],
-    };
-
-    let mut cold_ctv = hot_ctv.clone();
-    cold_ctv.outputs[0] = Output::Address {
-        address: request.cold_address.clone(),
-        amount: spend_amount,
-    };
-    let unvault_tmplhash = unvault_ctv.ctv()?;
-    let locking_script = locking_script(&unvault_tmplhash);
-    let address = locking_address(&locking_script, request.network);
-    Ok(LockingTemplate {
-        delay: request.block_delay,
-        unvault_ctv: serde_json::to_string(&unvault_ctv)?,
-        hot_ctv: serde_json::to_string(&hot_ctv)?,
-        cold_ctv: serde_json::to_string(&cold_ctv)?,
-        address: address.clone(),
-    })
+    let vault: Vault = request.into();
+    let address = vault.vault_address()?.require_network(vault.network)?;
+    let vault = serde_json::to_string(&vault)?;
+    Ok(LockingTemplate { vault, address })
 }
 
 #[derive(Deserialize)]
 pub(crate) struct UnvaultingRequest {
-    unvault_ctv: String,
-    hot_ctv: String,
-    cold_ctv: String,
-    delay: u16,
+    vault: String,
     txid: Txid,
     vout: u32,
 }
@@ -106,38 +77,19 @@ pub(crate) struct UnvaultingRequest {
 #[derive(Template)]
 #[template(path = "vaults/unvaulting.html.jinja")]
 pub(crate) struct UnvaultingTemplate {
-    unvault_ctv: String,
-    hot_ctv: String,
-    cold_ctv: String,
-    script: String,
+    vault: String,
     tx: String,
 }
 
 pub(crate) async fn unvaulting(
     Form(request): Form<UnvaultingRequest>,
 ) -> anyhow::Result<UnvaultingTemplate, AppError> {
-    let ctv: Ctv = serde_json::from_str(&request.unvault_ctv)?;
-    let tx = ctv.spending_tx(request.txid, request.vout)?;
-    let tx = hex::encode(bitcoin::consensus::serialize(&tx[0]));
-    match ctv.outputs[0].clone() {
-        Output::Vault {
-            hot,
-            cold,
-            amount,
-            delay,
-        } => {
-            let script = ctv::segwit::vault_locking_script(delay, cold, hot, ctv.network, amount)?
-                .to_string();
-            Ok(UnvaultingTemplate {
-                unvault_ctv: request.unvault_ctv.clone(),
-                hot_ctv: request.hot_ctv,
-                cold_ctv: request.cold_ctv,
-                script,
-                tx,
-            })
-        }
-        _ => Err(anyhow!("Invalid vault construction").into()),
-    }
+    let vault: Vault = serde_json::from_str(&request.vault)?;
+    let vault_ctv = vault.vault_ctv()?;
+    let spending_tx = vault_ctv.spending_tx(request.txid, request.vout)?[0].clone();
+    let tx = hex::encode(bitcoin::consensus::serialize(&spending_tx));
+    let vault = serde_json::to_string(&vault)?;
+    Ok(UnvaultingTemplate { vault, tx })
 }
 
 #[derive(Deserialize)]

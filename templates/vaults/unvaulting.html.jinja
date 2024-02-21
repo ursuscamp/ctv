@@ -10,15 +10,13 @@
 
   <div class="grid">
     <strong>Vault Locking Script</strong>
-    <code style="grid-column-end: span 4">{{ script }}</code>
+    <code style="grid-column-end: span 4">{{ "" }}</code>
   </div>
 
   <hr />
 
   <form action="/vaults/spending" method="post">
-    <input type="hidden" name="unvault_ctv" value="{{ unvault_ctv }}" />
-    <input type="hidden" name="hot_ctv" value="{{ hot_ctv }}" />
-    <input type="hidden" name="cold_ctv" value="{{ cold_ctv }}" />
+    <input type="hidden" name="vault" value="{{ vault }}" />
 
     <label for="txid">Txid</label>
     <input type="text" name="txid" id="txid" />
