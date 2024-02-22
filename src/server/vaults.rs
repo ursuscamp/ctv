@@ -96,7 +96,6 @@ pub(crate) async fn unvaulting(
 pub(crate) struct SpendingRequest {
     vault: String,
     txid: Txid,
-    vout: u32,
 }
 
 #[derive(Template)]
@@ -110,10 +109,10 @@ pub(crate) async fn spending(
     Form(request): Form<SpendingRequest>,
 ) -> anyhow::Result<SpendingTemplate, AppError> {
     let vault: Vault = serde_json::from_str(&request.vault)?;
-    let cold_tx = vault.cold_spend(request.txid, request.vout)?;
+    let cold_tx = vault.cold_spend(request.txid, 0)?;
+    let hot_tx = vault.hot_spend(request.txid, 0)?;
     Ok(SpendingTemplate {
         cold_tx: hex::encode(bitcoin::consensus::serialize(&cold_tx)),
-        // hot_tx: hex::encode(bitcoin::consensus::serialize(&hot_tx)),
-        hot_tx: String::new(),
+        hot_tx: hex::encode(bitcoin::consensus::serialize(&hot_tx)),
     })
 }

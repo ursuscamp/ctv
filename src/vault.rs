@@ -56,6 +56,27 @@ impl Vault {
         })
     }
 
+    pub(crate) fn hot_spend(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
+        let mut witness = Witness::new();
+        let script = self.final_spend_script()?;
+        witness.push([1]);
+        witness.push(script);
+        Ok(Transaction {
+            version: Version::TWO,
+            lock_time: LockTime::ZERO,
+            input: vec![TxIn {
+                previous_output: OutPoint { txid, vout },
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::from_height(self.delay),
+                witness,
+            }],
+            output: vec![TxOut {
+                value: self.amount - Amount::from_sat(1200),
+                script_pubkey: self.hot.clone().assume_checked().script_pubkey(),
+            }],
+        })
+    }
+
     fn final_spend_address(&self) -> anyhow::Result<Address<NetworkUnchecked>> {
         Ok(Address::p2wsh(&self.final_spend_script()?, self.network)
             .as_unchecked()
@@ -79,11 +100,7 @@ impl Vault {
         let amount = self.amount - Amount::from_sat(1200);
         let cold_ctv = self.cold_ctv()?;
         let cold_hash = PushBytesBuf::try_from(cold_ctv.ctv()?)?;
-        let mut hot_ctv = cold_ctv.clone();
-        hot_ctv.outputs[0] = Output::Address {
-            address: self.hot.clone(),
-            amount,
-        };
+        let hot_ctv = self.hot_ctv()?;
         let hot_hash = PushBytesBuf::try_from(hot_ctv.ctv()?)?;
         Ok(bitcoin::script::Builder::new()
             .push_opcode(OP_IF)
@@ -107,6 +124,19 @@ impl Vault {
             sequences: vec![Sequence::ZERO],
             outputs: vec![Output::Address {
                 address: self.cold.clone(),
+                amount: self.amount - Amount::from_sat(1200),
+            }],
+        })
+    }
+
+    fn hot_ctv(&self) -> anyhow::Result<Ctv> {
+        Ok(Ctv {
+            network: self.network,
+            version: Version::TWO,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::from_height(self.delay)],
+            outputs: vec![Output::Address {
+                address: self.hot.clone(),
                 amount: self.amount - Amount::from_sat(1200),
             }],
         })
