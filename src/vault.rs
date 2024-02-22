@@ -38,6 +38,7 @@ impl Vault {
     pub(crate) fn cold_spend(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
         let mut witness = Witness::new();
         let script = self.final_spend_script()?;
+        witness.push([]);
         witness.push(script);
         Ok(Transaction {
             version: Version::ONE,
@@ -61,27 +62,14 @@ impl Vault {
             .clone())
     }
 
-    fn unvault_ctv(&self) -> anyhow::Result<Ctv> {
-        Ok(Ctv {
-            network: self.network,
-            version: Version::TWO,
-            locktime: LockTime::ZERO,
-            sequences: vec![Sequence::from_height(self.delay)],
-            outputs: vec![Output::Address {
-                address: self.final_spend_address()?,
-                amount: self.amount - Amount::from_sat(1200),
-            }],
-        })
-    }
-
     pub(crate) fn vault_ctv(&self) -> anyhow::Result<Ctv> {
         Ok(Ctv {
             network: self.network,
             version: Version::ONE,
             locktime: LockTime::ZERO,
             sequences: vec![Sequence::ZERO],
-            outputs: vec![Output::Tree {
-                tree: Box::new(self.unvault_ctv()?),
+            outputs: vec![Output::Address {
+                address: self.final_spend_address()?,
                 amount: self.amount - Amount::from_sat(600),
             }],
         })
