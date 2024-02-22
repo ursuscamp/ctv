@@ -1,6 +1,11 @@
 use bitcoin::{
-    absolute::LockTime, address::NetworkUnchecked, transaction::Version, Address, Amount, Network,
-    ScriptBuf, Sequence,
+    absolute::LockTime,
+    address::NetworkUnchecked,
+    opcodes::all::{OP_CSV, OP_DROP, OP_ELSE, OP_ENDIF, OP_IF, OP_NOP4},
+    script::PushBytesBuf,
+    transaction::Version,
+    Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
+    Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,14 +35,24 @@ impl Vault {
         todo!()
     }
 
-    fn final_spend_script(&self) -> anyhow::Result<ScriptBuf> {
-        crate::ctv::segwit::vault_locking_script(
-            self.delay,
-            self.cold.clone(),
-            self.hot.clone(),
-            self.network,
-            self.amount,
-        )
+    pub(crate) fn cold_spend(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
+        let mut witness = Witness::new();
+        let script = self.final_spend_script()?;
+        witness.push(script);
+        Ok(Transaction {
+            version: Version::ONE,
+            lock_time: LockTime::ZERO,
+            input: vec![TxIn {
+                previous_output: OutPoint { txid, vout },
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::ZERO,
+                witness,
+            }],
+            output: vec![TxOut {
+                value: self.amount - Amount::from_sat(1200),
+                script_pubkey: self.cold.clone().assume_checked().script_pubkey(),
+            }],
+        })
     }
 
     fn final_spend_address(&self) -> anyhow::Result<Address<NetworkUnchecked>> {
@@ -68,6 +83,43 @@ impl Vault {
             outputs: vec![Output::Tree {
                 tree: Box::new(self.unvault_ctv()?),
                 amount: self.amount - Amount::from_sat(600),
+            }],
+        })
+    }
+
+    fn final_spend_script(&self) -> anyhow::Result<ScriptBuf> {
+        let amount = self.amount - Amount::from_sat(1200);
+        let cold_ctv = self.cold_ctv()?;
+        let cold_hash = PushBytesBuf::try_from(cold_ctv.ctv()?)?;
+        let mut hot_ctv = cold_ctv.clone();
+        hot_ctv.outputs[0] = Output::Address {
+            address: self.hot.clone(),
+            amount,
+        };
+        let hot_hash = PushBytesBuf::try_from(hot_ctv.ctv()?)?;
+        Ok(bitcoin::script::Builder::new()
+            .push_opcode(OP_IF)
+            .push_sequence(Sequence::from_height(self.delay))
+            .push_opcode(OP_CSV)
+            .push_opcode(OP_DROP)
+            .push_slice(hot_hash)
+            .push_opcode(OP_NOP4)
+            .push_opcode(OP_ELSE)
+            .push_slice(cold_hash)
+            .push_opcode(OP_NOP4)
+            .push_opcode(OP_ENDIF)
+            .into_script())
+    }
+
+    fn cold_ctv(&self) -> anyhow::Result<Ctv> {
+        Ok(Ctv {
+            network: self.network,
+            version: Version::ONE,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::ZERO],
+            outputs: vec![Output::Address {
+                address: self.cold.clone(),
+                amount: self.amount - Amount::from_sat(1200),
             }],
         })
     }

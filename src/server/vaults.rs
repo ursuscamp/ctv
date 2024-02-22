@@ -94,9 +94,7 @@ pub(crate) async fn unvaulting(
 
 #[derive(Deserialize)]
 pub(crate) struct SpendingRequest {
-    unvault_ctv: String,
-    hot_ctv: String,
-    cold_ctv: String,
+    vault: String,
     txid: Txid,
     vout: u32,
 }
@@ -111,12 +109,11 @@ pub(crate) struct SpendingTemplate {
 pub(crate) async fn spending(
     Form(request): Form<SpendingRequest>,
 ) -> anyhow::Result<SpendingTemplate, AppError> {
-    let hot_ctv: Ctv = serde_json::from_str(&request.hot_ctv)?;
-    let hot_tx = hot_ctv.spending_tx(request.txid, request.vout)?;
-    let cold_ctv: Ctv = serde_json::from_str(&request.cold_ctv)?;
-    let cold_tx = cold_ctv.spending_tx(request.txid, request.vout)?;
+    let vault: Vault = serde_json::from_str(&request.vault)?;
+    let cold_tx = vault.cold_spend(request.txid, request.vout)?;
     Ok(SpendingTemplate {
         cold_tx: hex::encode(bitcoin::consensus::serialize(&cold_tx)),
-        hot_tx: hex::encode(bitcoin::consensus::serialize(&hot_tx)),
+        // hot_tx: hex::encode(bitcoin::consensus::serialize(&hot_tx)),
+        hot_tx: String::new(),
     })
 }
