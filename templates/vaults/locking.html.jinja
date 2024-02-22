@@ -1,22 +1,30 @@
 {% extends "base.html.jinja" %}
 
 {% block content %}
-  <div class="grid">
-    <strong>Address</strong>
-    <code style="grid-column-end: span 4">{{ address }}</code>
-  </div>
+  <main>
+    <p>
+      Lock your Bitcoin in the vault by sending it to the address below. After
+      it has been mined into a block, provide the <code>txid</code> of the
+      transaction and the <code>vout</code> for the vault below in order to move
+      on to the unvaulting process.
+    </p>
+    <div class="grid">
+      <strong>Address</strong>
+      <code style="grid-column-end: span 4">{{ address }}</code>
+    </div>
 
-  <hr />
+    <hr />
 
-  <form action="/vaults/unvaulting" method="post">
-    <input type="hidden" name="vault" value="{{ vault }}" />
+    <form action="/vaults/unvaulting" method="post">
+      <input type="hidden" name="vault" value="{{ vault }}" />
 
-    <label for="txid">Txid</label>
-    <input type="text" name="txid" id="txid" />
+      <label for="txid">Txid</label>
+      <input type="text" name="txid" id="txid" />
 
-    <label for="vout">Vout</label>
-    <input type="text" name="vout" id="voud" />
+      <label for="vout">Vout</label>
+      <input type="text" name="vout" id="voud" />
 
-    <input type="submit" />
-  </form>
+      <input type="submit" />
+    </form>
+  </main>
 {% endblock %}

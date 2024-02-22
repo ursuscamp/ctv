@@ -1,0 +1,87 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+  <h2>Locking Transaction</h2>
+
+  <p>
+    Describe the future outputs you wish your transaction to commit to. They
+    should take the form:
+  </p>
+
+  <p>
+    <code>
+      address1:1.2btc <br />
+      address2:4323sats
+    </code>
+  </p>
+
+  <p>
+    You can use any combination of addresses and amounts (in sats or BTC) that
+    you like. After you lock the Bitcoin into these outputs, you will NOT be
+    able to send your Bitcoin anywhere else.
+  </p>
+
+  <details>
+    <summary>Regarding Fees</summary>
+    <p>
+      Fees are calculated very simply, by deducting 600 sats from every monetary
+      output. So an output of 1000 sats will actually be mined with 400 sat. A
+      production scheme would certainly have a more flexible fee structure.
+    </p>
+  </details>
+
+  <details>
+    <summary>Regarding OP_RETURN</summary>
+    <p>
+      OP_RETURN outputs are possible by appending another value to the end of an
+      output below, like so:
+    </p>
+    <p><code>bcrt1address:5btc:hello world</code></p>
+    <p>
+      In this example above, an OP_RETURN with "hello world" is inserted right
+      after the output. Note that in a simple CTV transaction, multiple
+      OP_RETURN values are non-standard and will not be broadcast. However, in a
+      congestion control tree each output will be in its own transaction and
+      thus they will be considered standard.
+    </p>
+  </details>
+
+  <details>
+    <summary>Congestion Control</summary>
+    <p>
+      If you check Congestion Control under additional options, it will cause
+      your outputs to be setup as a
+      <a href="https://utxos.org/uses/scaling/">Congestion Control tree</a>
+      instead of a single spend. What this means is that the outputs will be
+      unfurled in stages over multiple transactions. With the first spend
+      transaction, the first address and another CTV commitment will be the
+      outputs. A second transaction will spend that CTV to the second address
+      and yet another CTV, etc., until all of the addresses are spent on-chain.
+    </p>
+  </details>
+
+  <form action="/simple/locking" method="post">
+    <label for="outputs">Outputs</label>
+    <textarea name="outputs" id="outputs" required></textarea>
+
+    <label for="network">Network</label>
+    <select id="network" name="network" required>
+      <option value="regtest">Regtest</option>
+      <option value="signet">Signet</option>
+    </select>
+
+    <input type="submit" />
+
+    <details>
+      <summary>Additional Options</summary>
+
+      <label for="congestion">
+        <input type="checkbox" id="congestion" name="congestion" value="true" />
+        Congestion Control
+      </label>
+      <small>
+        Implement the above outputs as a multi-transaction congestion control
+        tree instead of a single spend</small
+      >
+    </details>
+  </form>
+{% endblock %}

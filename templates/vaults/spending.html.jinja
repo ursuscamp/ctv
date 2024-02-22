@@ -6,10 +6,28 @@
     <code style="grid-column-end: span 4">{{ hot_tx }}</code>
   </div>
 
+  <div class="grid">
+    <div></div>
+    <small style="grid-column-end: span 4"
+      ><em
+        >Send the Bitcoin to your hot address, but only after the specified
+        block delay.</em
+      ></small
+    >
+  </div>
+
   <hr />
 
   <div class="grid">
     <strong>Spend to Cold Address</strong>
     <code style="grid-column-end: span 4">{{ cold_tx }}</code>
+  </div>
+  <div class="grid">
+    <div></div>
+    <small style="grid-column-end: span 4"
+      ><em
+        >Send the Bitcoin to the cold address, available immediately.</em
+      ></small
+    >
   </div>
 {% endblock %}

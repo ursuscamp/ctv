@@ -1,26 +1,33 @@
 {% extends "base.html.jinja" %}
 
 {% block content %}
-  <div class="grid">
-    <strong>Unvaulting Transaction</strong>
-    <code style="grid-column-end: span 4">{{ tx }}</code>
-  </div>
+  <main>
+    <p>
+      Now it's time to begin the unvualting process. In order to unvault, you
+      must spend the vaulted Bitcoin to a new output. This new output allows
+      only two possible path spends: the hot path and the cold path. Once you
+      have broadcast the transaction, move onto the next step.
+    </p>
 
-  <hr />
+    <div class="grid">
+      <strong>Unvaulting Transaction</strong>
+      <code style="grid-column-end: span 4">{{ tx }}</code>
+    </div>
 
-  <div class="grid">
-    <strong>Vault Locking Script</strong>
-    <code style="grid-column-end: span 4">{{ "" }}</code>
-  </div>
+    <hr />
 
-  <hr />
+    <div class="grid">
+      <strong>Vault Locking Script</strong>
+      <code style="grid-column-end: span 4">{{ script|escape("none") }}</code>
+    </div>
 
-  <form action="/vaults/spending" method="post">
-    <input type="hidden" name="vault" value="{{ vault }}" />
+    <hr />
 
-    <label for="txid">Txid</label>
-    <input type="text" name="txid" id="txid" />
+    <form action="/vaults/spending" method="post">
+      <input type="hidden" name="vault" value="{{ vault }}" />
+      <input type="hidden" name="txid" value="{{ txid }}" />
 
-    <input type="submit" />
-  </form>
+      <input type="submit" value="Continue to spending" />
+    </form>
+  </main>
 {% endblock %}

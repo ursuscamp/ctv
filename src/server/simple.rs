@@ -12,6 +12,14 @@ use crate::{
 };
 
 #[derive(Template)]
+#[template(path = "simple/index.html.jinja")]
+pub(crate) struct IndexTemplate;
+
+pub(crate) async fn index() -> IndexTemplate {
+    IndexTemplate
+}
+
+#[derive(Template)]
 #[template(path = "simple/locking.html.jinja")]
 pub(crate) struct CtvTemplate {
     ctv_hash: String,

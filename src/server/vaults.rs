@@ -78,18 +78,27 @@ pub(crate) struct UnvaultingRequest {
 #[template(path = "vaults/unvaulting.html.jinja")]
 pub(crate) struct UnvaultingTemplate {
     vault: String,
+    script: String,
     tx: String,
+    txid: Txid,
 }
 
 pub(crate) async fn unvaulting(
     Form(request): Form<UnvaultingRequest>,
 ) -> anyhow::Result<UnvaultingTemplate, AppError> {
     let vault: Vault = serde_json::from_str(&request.vault)?;
+    let script = vault.final_spend_script()?;
+    let script = ctv::colorize(&script.to_string());
     let vault_ctv = vault.vault_ctv()?;
     let spending_tx = vault_ctv.spending_tx(request.txid, request.vout)?[0].clone();
     let tx = hex::encode(bitcoin::consensus::serialize(&spending_tx));
     let vault = serde_json::to_string(&vault)?;
-    Ok(UnvaultingTemplate { vault, tx })
+    Ok(UnvaultingTemplate {
+        vault,
+        script,
+        tx,
+        txid: spending_tx.txid(),
+    })
 }
 
 #[derive(Deserialize)]

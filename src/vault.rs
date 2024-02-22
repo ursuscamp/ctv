@@ -96,7 +96,7 @@ impl Vault {
         })
     }
 
-    fn final_spend_script(&self) -> anyhow::Result<ScriptBuf> {
+    pub(crate) fn final_spend_script(&self) -> anyhow::Result<ScriptBuf> {
         let amount = self.amount - Amount::from_sat(1200);
         let cold_ctv = self.cold_ctv()?;
         let cold_hash = PushBytesBuf::try_from(cold_ctv.ctv()?)?;

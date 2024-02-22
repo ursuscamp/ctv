@@ -29,6 +29,7 @@ pub async fn server() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", axum::routing::get(index))
+        .route("/simple", axum::routing::get(simple::index))
         .route("/simple/locking", axum::routing::post(simple::locking))
         .route("/simple/spending", axum::routing::post(simple::spending))
         .route("/vaults", axum::routing::get(vaults::index))

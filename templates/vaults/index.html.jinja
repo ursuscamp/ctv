@@ -7,12 +7,14 @@
     set of guaranteed paths to provide additonal security. Normal vaults require
     you to pre-sign transactions and throw away the keys, but with
     <code>OP_CTV</code> you can guarantee that your transactions will only go to
-    your predetermined vault outputs without any deleted key/trust requirements.
+    your predetermined vault outputs without any deleted key requirements, trust
+    issues or worries about losing presigned transaction.
   </p>
 
   <form action="/vaults/locking" method="post">
     <label for="amount">Locked Amount</label>
     <input type="text" id="amount" name="amount" />
+    <small>E.g. <code>1btc</code> or <code>10000sats</code>.</small>
 
     <label for="cold_address">Cold Address</label>
     <input type="text" id="cold_address" name="cold_address" />
