@@ -7,9 +7,10 @@ use bitcoin::{
     Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
     Witness,
 };
+use ctvlib::{Ctv, Output};
 use serde::{Deserialize, Serialize};
 
-use crate::ctv::{self, Ctv, Output};
+use crate::ctv::{self};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Vault {
@@ -28,11 +29,6 @@ impl Vault {
         Ok(ctv::segwit::locking_address(&vault_lock, self.network)
             .as_unchecked()
             .clone())
-    }
-
-    pub(crate) fn to_ctv(&self) -> anyhow::Result<Ctv> {
-        let script = self.final_spend_script()?;
-        todo!()
     }
 
     pub(crate) fn cold_spend(&self, txid: Txid, vout: u32) -> anyhow::Result<Transaction> {
@@ -93,11 +89,12 @@ impl Vault {
                 address: self.final_spend_address()?,
                 amount: self.amount - Amount::from_sat(600),
             }],
+            input_idx: 0,
         })
     }
 
     pub(crate) fn final_spend_script(&self) -> anyhow::Result<ScriptBuf> {
-        let amount = self.amount - Amount::from_sat(1200);
+        let _amount = self.amount - Amount::from_sat(1200);
         let cold_ctv = self.cold_ctv()?;
         let cold_hash = PushBytesBuf::try_from(cold_ctv.ctv()?)?;
         let hot_ctv = self.hot_ctv()?;
@@ -126,6 +123,7 @@ impl Vault {
                 address: self.cold.clone(),
                 amount: self.amount - Amount::from_sat(1200),
             }],
+            input_idx: 0,
         })
     }
 
@@ -139,6 +137,7 @@ impl Vault {
                 address: self.hot.clone(),
                 amount: self.amount - Amount::from_sat(1200),
             }],
+            input_idx: 0,
         })
     }
 }

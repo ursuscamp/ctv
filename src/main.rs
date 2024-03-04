@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod ctv;
 mod error;
 mod server;

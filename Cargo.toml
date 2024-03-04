@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ctvlib = { git = "https://github.com/ursuscamp/ctvlib" }
+# ctvlib = { path = "../ctvlib" }
 anyhow = "1.0.79"
 askama = "0.12.1"
 askama_axum = "0.4.0"

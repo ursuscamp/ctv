@@ -4,12 +4,10 @@ use anyhow::anyhow;
 use askama::Template;
 use axum::Form;
 use bitcoin::{absolute::LockTime, transaction::Version, Address, Amount, Network, Sequence, Txid};
+use ctvlib::{Ctv, Output};
 use serde::Deserialize;
 
-use crate::{
-    ctv::{self, Ctv, Output},
-    error::AppError,
-};
+use crate::{ctv, error::AppError};
 
 #[derive(Template)]
 #[template(path = "simple/index.html.jinja")]
@@ -39,11 +37,11 @@ pub(crate) struct LockingRequest {
 pub(crate) async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, AppError> {
     tracing::info!("Locking started.");
     tracing::debug!("{request:?}");
-    let mut ctv = extract_ctv_from_request(&request)?;
+    let ctv = extract_ctv_from_request(&request)?;
 
     let ctvhash = ctv.ctv()?;
-    let locking_script = ctv::segwit::locking_script(&ctvhash);
-    let address = ctv::segwit::locking_address(&locking_script, request.network);
+    let locking_script = ctvlib::segwit::locking_script(&ctvhash);
+    let address = ctvlib::segwit::locking_address(&locking_script, request.network);
 
     tracing::info!("Locking finished.");
     Ok(CtvTemplate {
@@ -69,7 +67,7 @@ fn extract_ctv_from_request(request: &LockingRequest) -> Result<Ctv, AppError> {
         amounts.push(amount);
         datas.push(splitter.next().map(ToString::to_string));
     }
-    let mut ctv = if request.congestion.unwrap_or_default() {
+    let ctv = if request.congestion.unwrap_or_default() {
         tracing::debug!("User requested congestion control tree.");
         locking_tree(&addresses, &amounts, &datas, request.network).unwrap()
     } else {
@@ -105,6 +103,7 @@ fn simple_ctv(
         locktime: LockTime::ZERO,
         sequences: vec![Sequence::ZERO],
         outputs,
+        input_idx: 0,
     }
 }
 
@@ -145,6 +144,7 @@ fn locking_tree(
         locktime: LockTime::ZERO,
         sequences: vec![Sequence::ZERO],
         outputs,
+        input_idx: 0,
     })
 }
 

@@ -1,11 +1,9 @@
-use anyhow::{anyhow, bail};
+
 use askama::Template;
 use axum::Form;
 use bitcoin::{
-    absolute::LockTime,
     address::{NetworkChecked, NetworkUnchecked},
-    transaction::Version,
-    Address, Amount, Network, Sequence, Txid,
+    Address, Amount, Network, Txid,
 };
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
@@ -13,8 +11,6 @@ use serde_with::{serde_as, DisplayFromStr};
 use crate::{
     ctv::{
         self,
-        segwit::{self, locking_address, locking_script},
-        Ctv, Output,
     },
     error::AppError,
     vault::Vault,
