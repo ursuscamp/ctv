@@ -74,14 +74,29 @@
     <details>
       <summary>Additional Options</summary>
 
-      <label for="congestion">
-        <input type="checkbox" id="congestion" name="congestion" value="true" />
-        Congestion Control
-      </label>
-      <small>
-        Implement the above outputs as a multi-transaction congestion control
-        tree instead of a single spend</small
-      >
+      <div style="margin-bottom: 1rem;">
+        <label for="congestion">
+          <input
+            type="checkbox"
+            id="congestion"
+            name="congestion"
+            value="true"
+          />
+          Congestion Control
+        </label>
+        <small>
+          Implement the above outputs as a multi-transaction congestion control
+          tree instead of a single spend</small
+        >
+      </div>
+
+      <div>
+        <label for="taproot">
+          <input type="checkbox" id="taproot" name="taproot" value="true" />
+          Taproot
+        </label>
+        <small>Use a taproot output instead of Segwit v0 (the default).</small>
+      </div>
     </details>
   </form>
 {% endblock %}

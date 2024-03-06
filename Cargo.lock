@@ -417,9 +417,10 @@ dependencies = [
 [[package]]
 name = "ctvlib"
 version = "0.1.0"
-source = "git+https://github.com/ursuscamp/ctvlib#0befbc2905780ad0aaaa98d90138ce1fa1992c0f"
+source = "git+https://github.com/ursuscamp/ctvlib#78bc894ac9a5cf629dba41c20f7a186a343d81c3"
 dependencies = [
  "bitcoin 0.31.1",
+ "secp256k1 0.28.2",
  "serde",
  "sha2",
  "thiserror",

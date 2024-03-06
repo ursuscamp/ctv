@@ -3,11 +3,14 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use askama::Template;
 use axum::Form;
-use bitcoin::{absolute::LockTime, transaction::Version, Address, Amount, Network, Sequence, Txid};
-use ctvlib::{Ctv, Output};
+use bitcoin::{
+    absolute::LockTime, transaction::Version, Address, Amount, Network, Sequence, Txid,
+    XOnlyPublicKey,
+};
+use ctvlib::{Context, Fields, Output, TxType};
 use serde::Deserialize;
 
-use crate::{ctv, error::AppError};
+use crate::{error::AppError, util};
 
 #[derive(Template)]
 #[template(path = "simple/index.html.jinja")]
@@ -19,7 +22,7 @@ pub(crate) async fn index() -> IndexTemplate {
 
 #[derive(Template)]
 #[template(path = "simple/locking.html.jinja")]
-pub(crate) struct CtvTemplate {
+pub(crate) struct ContextTemplate {
     ctv_hash: String,
     locking_script: String,
     locking_hex: String,
@@ -32,28 +35,31 @@ pub(crate) struct LockingRequest {
     outputs: String,
     network: Network,
     congestion: Option<bool>,
+    taproot: Option<bool>,
 }
 
-pub(crate) async fn locking(Form(request): Form<LockingRequest>) -> Result<CtvTemplate, AppError> {
+pub(crate) async fn locking(
+    Form(request): Form<LockingRequest>,
+) -> Result<ContextTemplate, AppError> {
     tracing::info!("Locking started.");
     tracing::debug!("{request:?}");
     let ctv = extract_ctv_from_request(&request)?;
 
     let ctvhash = ctv.ctv()?;
-    let locking_script = ctvlib::segwit::locking_script(&ctvhash);
-    let address = ctvlib::segwit::locking_address(&locking_script, request.network);
+    let locking_script = ctv.locking_script()?;
+    let address = ctv.address()?;
 
     tracing::info!("Locking finished.");
-    Ok(CtvTemplate {
+    Ok(ContextTemplate {
         ctv_hash: hex::encode(ctvhash),
-        locking_script: ctv::colorize(&locking_script.to_string()),
+        locking_script: util::colorize(&locking_script.to_string()),
         locking_hex: hex::encode(locking_script.into_bytes()),
         address: address.to_string(),
         ctv: serde_json::to_string(&ctv)?,
     })
 }
 
-fn extract_ctv_from_request(request: &LockingRequest) -> Result<Ctv, AppError> {
+fn extract_ctv_from_request(request: &LockingRequest) -> Result<Context, AppError> {
     let mut addresses = Vec::new();
     let mut amounts = Vec::new();
     let mut datas = Vec::new();
@@ -67,14 +73,25 @@ fn extract_ctv_from_request(request: &LockingRequest) -> Result<Ctv, AppError> {
         amounts.push(amount);
         datas.push(splitter.next().map(ToString::to_string));
     }
+    let tx_type = if request.taproot.unwrap_or_default() {
+        TxType::Taproot {
+            internal_key: nums_points(),
+        }
+    } else {
+        TxType::Segwit
+    };
     let ctv = if request.congestion.unwrap_or_default() {
         tracing::debug!("User requested congestion control tree.");
-        locking_tree(&addresses, &amounts, &datas, request.network).unwrap()
+        locking_tree(&addresses, &amounts, &datas, request.network, tx_type).unwrap()
     } else {
         tracing::debug!("User requested simple CTV.");
-        simple_ctv(addresses, amounts, datas, request)
+        simple_ctv(addresses, amounts, datas, request, tx_type)
     };
     Ok(ctv)
+}
+
+fn nums_points() -> XOnlyPublicKey {
+    ctvlib::util::hash2curve(b"Activate CTV now!")
 }
 
 fn simple_ctv(
@@ -82,7 +99,8 @@ fn simple_ctv(
     amounts: Vec<Amount>,
     datas: Vec<Option<String>>,
     request: &LockingRequest,
-) -> Ctv {
+    tx_type: TxType,
+) -> Context {
     let mut outputs = Vec::new();
     for ((address, amount), data) in addresses
         .into_iter()
@@ -97,13 +115,16 @@ fn simple_ctv(
             outputs.push(Output::Data { data });
         }
     }
-    Ctv {
+    Context {
         network: request.network,
-        version: Version::ONE,
-        locktime: LockTime::ZERO,
-        sequences: vec![Sequence::ZERO],
-        outputs,
-        input_idx: 0,
+        tx_type,
+        fields: Fields {
+            version: Version::ONE,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::ZERO],
+            outputs,
+            input_idx: 0,
+        },
     }
 }
 
@@ -112,7 +133,8 @@ fn locking_tree(
     amounts: &[Amount],
     datas: &[Option<String>],
     network: Network,
-) -> Option<Ctv> {
+    tx_type: TxType,
+) -> Option<Context> {
     let address = addresses.first()?.clone();
     let amount = *amounts.first()?;
     let data = datas.first()?;
@@ -121,7 +143,13 @@ fn locking_tree(
     let rem: Amount = amounts[1..].iter().copied().sum();
 
     // Recrusively build the locking tree
-    let next_ctv = locking_tree(&addresses[1..], &amounts[1..], &datas[1..], network);
+    let next_ctv = locking_tree(
+        &addresses[1..],
+        &amounts[1..],
+        &datas[1..],
+        network,
+        tx_type,
+    );
     let mut outputs = Vec::new();
     if let Some(ctv) = next_ctv {
         outputs.push(Output::Tree {
@@ -138,13 +166,16 @@ fn locking_tree(
         outputs.push(Output::Data { data: data.clone() });
     }
 
-    Some(Ctv {
+    Some(Context {
         network,
-        version: Version::ONE,
-        locktime: LockTime::ZERO,
-        sequences: vec![Sequence::ZERO],
-        outputs,
-        input_idx: 0,
+        tx_type,
+        fields: Fields {
+            version: Version::ONE,
+            locktime: LockTime::ZERO,
+            sequences: vec![Sequence::ZERO],
+            outputs,
+            input_idx: 0,
+        },
     })
 }
 
@@ -166,7 +197,7 @@ pub(crate) async fn spending(
 ) -> Result<SpendingTemplate, AppError> {
     tracing::info!("Spending started.");
     tracing::debug!("{request:?}");
-    let ctv: Ctv = serde_json::from_str(&request.ctv)?;
+    let ctv: Context = serde_json::from_str(&request.ctv)?;
     let tx = ctv.spending_tx(request.txid, request.vout)?;
 
     tracing::info!("Spending finished.");

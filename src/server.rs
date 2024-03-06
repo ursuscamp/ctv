@@ -18,7 +18,7 @@ pub async fn server() -> anyhow::Result<()> {
         .route("/simple/locking", axum::routing::post(simple::locking))
         .route("/simple/spending", axum::routing::post(simple::spending))
         .route("/vaults", axum::routing::get(vaults::index))
-        .route("/vaults/locking", axum::routing::post(vaults::locking))
+        .route("/vaults/vaulting", axum::routing::post(vaults::vaulting))
         .route(
             "/vaults/unvaulting",
             axum::routing::post(vaults::unvaulting),

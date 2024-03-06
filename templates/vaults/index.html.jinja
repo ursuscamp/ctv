@@ -11,7 +11,7 @@
     issues or worries about losing presigned transaction.
   </p>
 
-  <form action="/vaults/locking" method="post">
+  <form action="/vaults/vaulting" method="post">
     <label for="amount">Locked Amount</label>
     <input type="text" id="amount" name="amount" />
     <small>E.g. <code>1btc</code> or <code>10000sats</code>.</small>
@@ -32,5 +32,17 @@
     </select>
 
     <input type="submit" />
+
+    <details>
+      <summary>Additional Options</summary>
+
+      <div>
+        <label for="taproot">
+          <input type="checkbox" id="taproot" name="taproot" value="true" />
+          Taproot
+        </label>
+        <small>Use a taproot output instead of Segwit v0 (the default).</small>
+      </div>
+    </details>
   </form>
 {% endblock %}
